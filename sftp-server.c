@@ -1448,20 +1448,21 @@ process(void)
 		if ((r = sshbuf_get_u32(iqueue, &id)) != 0)
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
 		
-      /*for (i = 0; handlers[i].handler != NULL; i++) {*/
-      for (i = 0; handler_table[i] != NULL; i++) {
-			for (j = 0; handler_table[i][j].handler != NULL; ++j) {
-         
-            if (type == handler_table[i][j].type) {
+      for (i = 0; i < HANDLER_CNT; i++) {
+			if (handler_table[i] == NULL)
+            continue;
+
+         if (type == handler_table[i]->type) {
+            /* Execute every handler in the chain for this table entry. */
+            for (j = 0; handler_table[i][j].handler != NULL; ++j) {
 				   if (!request_permitted(&handler_table[i][j])) {
 					   send_status(id,
 					    SSH2_FX_PERMISSION_DENIED);
 				   }  else   {
 					   handler_table[i][j].handler(id);
 				   }
-				   /*break;*/
-               goto ENDSCAN;
 			   }
+            goto ENDSCAN;
          }
 		}
 ENDSCAN:
@@ -1658,8 +1659,8 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 
    /* Initialize the handler table with the default packet handlers */
    for (i = 0; handlers[i].handler != NULL; i++) {
-      handler_table[i] = (handler_ptr) xcalloc(sizeof(struct sftp_handler), 2);
-      memcpy(handler_table[i], &handlers[i], sizeof(struct sftp_handler));
+      handler_table[handlers[i].type] = (handler_ptr) xcalloc(sizeof(struct sftp_handler), 2);
+      memcpy(handler_table[handlers[i].type], &handlers[i], sizeof(struct sftp_handler));
    }
 
 #ifdef HAVE_HANDLER_OVERRIDES
