@@ -49,6 +49,7 @@
 #include "uidswap.h"
 
 #include "sftp.h"
+#include "sftp-handler.h"
 #include "sftp-common.h"
 
 /* Our verbosity */
@@ -83,6 +84,9 @@ struct Stat {
 	Attrib attrib;
 };
 
+#define HANDLER_CNT SSH2_FXP_SYMLINK+1
+struct sftp_handler ** handler_table;
+
 /* Packet handlers */
 static void process_open(u_int32_t id);
 static void process_close(u_int32_t id);
@@ -109,13 +113,13 @@ static void process_extended_hardlink(u_int32_t id);
 static void process_extended_fsync(u_int32_t id);
 static void process_extended(u_int32_t id);
 
-struct sftp_handler {
-	const char *name;	/* user-visible name for fine-grained perms */
-	const char *ext_name;	/* extended request name */
-	u_int type;		/* packet type, for non extended packets */
-	void (*handler)(u_int32_t);
-	int does_write;		/* if nonzero, banned for readonly mode */
-};
+//struct sftp_handler {
+//	const char *name;	/* user-visible name for fine-grained perms */
+//	const char *ext_name;	/* extended request name */
+//	u_int type;		/* packet type, for non extended packets */
+//	void (*handler)(u_int32_t);
+//	int does_write;		/* if nonzero, banned for readonly mode */
+//};
 
 struct sftp_handler handlers[] = {
 	/* NB. SSH2_FXP_OPEN does the readonly check in the handler itself */
@@ -139,6 +143,8 @@ struct sftp_handler handlers[] = {
 	{ "symlink", NULL, SSH2_FXP_SYMLINK, process_symlink, 1 },
 	{ NULL, NULL, 0, NULL, 0 }
 };
+
+
 
 /* SSH2_FXP_EXTENDED submessages */
 struct sftp_handler extended_handlers[] = {
@@ -1403,7 +1409,7 @@ process(void)
 	u_int consumed;
 	u_char type;
 	const u_char *cp;
-	int i, r;
+	int i, j, r;
 	u_int32_t id;
 
 	buf_len = sshbuf_len(iqueue);
@@ -1441,17 +1447,24 @@ process(void)
 			fatal("Received %u request before init", type);
 		if ((r = sshbuf_get_u32(iqueue, &id)) != 0)
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
-		for (i = 0; handlers[i].handler != NULL; i++) {
-			if (type == handlers[i].type) {
-				if (!request_permitted(&handlers[i])) {
-					send_status(id,
+		
+      /*for (i = 0; handlers[i].handler != NULL; i++) {*/
+      for (i = 0; handler_table[i] != NULL; i++) {
+			for (j = 0; handler_table[i][j].handler != NULL; ++j) {
+         
+            if (type == handler_table[i][j].type) {
+				   if (!request_permitted(&handler_table[i][j])) {
+					   send_status(id,
 					    SSH2_FX_PERMISSION_DENIED);
-				} else {
-					handlers[i].handler(id);
-				}
-				break;
-			}
+				   }  else   {
+					   handler_table[i][j].handler(id);
+				   }
+				   /*break;*/
+               goto ENDSCAN;
+			   }
+         }
 		}
+ENDSCAN:
 		if (handlers[i].handler == NULL)
 			error("Unknown message %u", type);
 	}
@@ -1640,6 +1653,22 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 		}
 	}
 
+   /* test */
+   sleep(30);
+
+   handler_table = (handler_tbl) xcalloc(sizeof(handler_ptr), HANDLER_CNT);
+
+   /* Initialize the handler table with the default packet handlers */
+   for (i = 0; handlers[i].handler != NULL; i++) {
+      handler_table[i] = (handler_ptr) xcalloc(sizeof(struct sftp_handler), 2);
+      memcpy(handler_table[i], &handlers[i], sizeof(struct sftp_handler));
+   }
+
+#ifdef HAVE_HANDLER_OVERRIDES
+   /* Initialize application overrides over the SFTP handlers table. */
+   init_handler_overrides(handler_table);
+#endif
+
 	set_size = howmany(max + 1, NFDBITS) * sizeof(fd_mask);
 	for (;;) {
 		memset(rset, 0, set_size);
@@ -1707,4 +1736,6 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 			fatal("%s: sshbuf_check_reserve: %s",
 			    __func__, ssh_err(r));
 	}
+
+   free(handler_table);
 }
