@@ -1447,7 +1447,7 @@ process(void)
 			fatal("Received %u request before init", type);
 		if ((r = sshbuf_get_u32(iqueue, &id)) != 0)
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
-		
+
       for (i = 0; i < HANDLER_CNT; i++) {
 			if (handler_table[i] == NULL)
             continue;

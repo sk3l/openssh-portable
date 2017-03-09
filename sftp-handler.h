@@ -12,6 +12,6 @@ struct sftp_handler {
 typedef struct sftp_handler * handler_ptr;
 typedef handler_ptr *         handler_tbl;
 
-int init_handler_overrides(handler_tbl handlers); 
+int init_handler_overrides(handler_tbl handlers);
 
 #endif
