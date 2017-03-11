@@ -53,6 +53,8 @@
 #define SSH2_FXP_READLINK		19
 #define SSH2_FXP_SYMLINK		20
 
+#define SSH2_FXP_CNT				SSH2_FXP_SYMLINK
+
 /* server to client */
 #define SSH2_FXP_VERSION		2
 #define SSH2_FXP_STATUS			101
