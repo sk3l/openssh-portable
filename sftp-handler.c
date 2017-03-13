@@ -117,7 +117,27 @@ int init_handler_overrides(handler_list * htbl)
 
 static void post_open_to_fifo(u_int32_t id)
 {
+   int rc = 0;
+	size_t len = 0;
+	const u_char * path = NULL;
+
 	logit("Processing custom handler override for open.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_open_to_fifo: %d", rc);
+	   return;
+	}
+
+	debug("Dispatch open name \"%s\" to event FIFO.", path);
+
+   len = sprintf(buff_fifo, "op=open path='%s'\n", path);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_open_to_fifo: %d", errno);
+	}
 }
 
 static void post_close_to_fifo(u_int32_t id)
