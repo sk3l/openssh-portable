@@ -58,6 +58,8 @@ static void post_rename_to_fifo(u_int32_t id);
 static void post_readlink_to_fifo(u_int32_t id);
 static void post_symlink_to_fifo(u_int32_t id);
 
+static Handle * get_handle(const char *, int, int);
+
 struct sftp_handler overrides[] = {
 	   { NULL, NULL, 0, NULL, 0 },
 	   { NULL, NULL, 0, NULL, 0 },
@@ -143,10 +145,9 @@ static void post_open_to_fifo(u_int32_t id)
 static void post_close_to_fifo(u_int32_t id)
 {
    int rc = 0;
-   u_int32_t idx_handle = 0;
 	size_t len = 0;
 	const u_char * handle = NULL;
-   const u_char * path = NULL;
+   Handle * hptr;
 
    logit("Processing custom handler override for close.");
 
@@ -157,21 +158,11 @@ static void post_close_to_fifo(u_int32_t id)
 	   return;
 	}
 
-   /* Handles are conveyed as string in protocol, but they are really int32
-    * index into global handles array.*/
-   if (len != sizeof(int)) {
-	   error("Encountered error in post_close_to_fifo: handle len of %d", (int)len);
-	   return;
-   }
-   idx_handle = get_u32(handle);
+   hptr = get_handle(handle, len, -1);
+   if (hptr != NULL) {
+	   debug("Dispatch close of path \"%s\" to event FIFO.", hptr->name);
 
-   /* Handle check is from get_handle() func in sftp-server.c */
-   if (idx_handle < num_handles) {
-      path = handles[idx_handle].name;
-
-	   debug("Dispatch close of path \"%s\" to event FIFO.", path);
-
-      len = sprintf(buff_fifo, "op=close path='%s'\n", path);
+      len = sprintf(buff_fifo, "op=close path='%s'\n", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -179,7 +170,7 @@ static void post_close_to_fifo(u_int32_t id)
 	      return;
 	   }
    } else {
-	   error("Encountered error in post_close_to_fifo: bad handle idx %d", (int)idx_handle);
+	   error("Encountered error in post_close_to_fifo: bad handle");
    }
 }
 
@@ -271,7 +262,7 @@ static void post_readdir_to_fifo(u_int32_t id)
    u_int32_t idx_handle = 0;
 	size_t len = 0;
 	const u_char * handle = NULL;
-   const u_char *  path  = NULL;
+   Handle * hptr;
 
 	logit("Processing custom handler override for readdir.");
 
@@ -282,21 +273,11 @@ static void post_readdir_to_fifo(u_int32_t id)
 	   return;
 	}
 
-   /* Handles are conveyed as string in protocol, but they are really int32
-    * index into global handles array.*/
-   if (len != sizeof(int)) {
-	   error("Encountered error in post_readdir_to_fifo: handle len of %d", (int)len);
-	   return;
-   }
-   idx_handle = get_u32(handle);
+   hptr = get_handle(handle, len, HANDLE_DIR);
+   if (hptr != NULL) {
+		debug("Dispatch readdir name \"%s\" to event FIFO.", hptr->name);
 
-   /* Handle check is from get_handle() func in sftp-server.c */
-   if ((idx_handle < num_handles) && (handles[idx_handle].use == HANDLE_DIR)) {
-      path = handles[idx_handle].name;
-
-	   debug("Dispatch readdir name \"%s\" to event FIFO.", path);
-
-      len = sprintf(buff_fifo, "op=readdir path='%s'\n", path);
+      len = sprintf(buff_fifo, "op=readdir path='%s'\n", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -341,4 +322,34 @@ static void post_readlink_to_fifo(u_int32_t id)
 static void post_symlink_to_fifo(u_int32_t id)
 {
 	logit("Processing custom handler override for symlink.");
+}
+
+static Handle * get_handle(const char * idx_str, int len, int hkind) {
+   Handle * hptr;
+   u_int idx_handle = -1;
+
+   /* Handles are conveyed as string in protocol, but they are really int32
+    * index into global handles array.*/
+   if (len != sizeof(int)) {
+	   error("Encountered error in get_handle: handle len of %d", (int)len);
+	   return NULL;
+   }
+   idx_handle = get_u32(idx_str);
+
+   /* Handle check is from get_handle() func in sftp-server.c */
+   if (idx_handle < num_handles) {
+      hptr = &handles[idx_handle];
+      if ((hkind >= 0) && (hptr->use != hkind)) {
+	      error("Encountered error in get_handle: expected handle tpe %d, bu got %d",
+               hkind, hptr->use);
+	      return NULL;
+      }
+
+      return hptr;
+   }
+   else {
+	   error("Encountered error in get_handle: handle idx %d out of bounds %d",
+           idx_handle, num_handles);
+      return NULL;
+   }
 }
