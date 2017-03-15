@@ -1,7 +1,9 @@
 #ifndef SFTP_HANDLER_H
 #define SFTP_HANDLER_H
 
-typedef void (*handler_fnc)(u_int32_t);
+#include "includes.h"
+
+typedef void (*handler_fnc)(u_int);
 
 struct sftp_handler {
 	const char *name;	         /* user-visible name for fine-grained perms */
