@@ -1,4 +1,5 @@
-#include "includes.h"
+
+#include "sftp-handler.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -10,7 +11,6 @@
 #include "misc.h"
 #include "sshbuf.h"
 #include "sftp.h"
-#include "sftp-handler.h"
 #include "xmalloc.h"
 
 extern struct sshbuf * iqueue;
