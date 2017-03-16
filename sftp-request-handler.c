@@ -85,7 +85,7 @@ static void post_open_to_fifo(u_int32_t id)
 
 	debug("Dispatch open name \"%.*s\" to event FIFO.", (int)len, path);
 
-   len = sprintf(buff_fifo, "op=open path='%.*s'\n", (int)len, path);
+   len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "open", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -113,7 +113,7 @@ static void post_close_to_fifo(u_int32_t id)
    if (hptr != NULL) {
 	   debug("Dispatch close of path \"%s\" to event FIFO.", hptr->name);
 
-      len = sprintf(buff_fifo, "op=close path='%s'\n", hptr->name);
+      len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "close", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -127,12 +127,84 @@ static void post_close_to_fifo(u_int32_t id)
 
 static void post_read_to_fifo(u_int32_t id)
 {
+   int rc = 0;
+   u_int64_t off = 0;
+   u_int32_t max = 0;
+	size_t len = 0;
+	const u_char * handle = NULL;
+   Handle * hptr;
+
 	logit("Processing custom handler override for read.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &handle, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_read_to_fifo: %d", rc);
+	   return;
+	}
+
+   hptr = get_handle(handle, len, -1);
+   if (hptr != NULL) {
+	   debug("Dispatch read from path \"%s\" to event FIFO.", hptr->name);
+
+      /* establish read offset  */
+      off = get_u64(handle + len);
+
+      /* establish read max size */
+      max = get_u32(handle + len + sizeof(u_int64_t));
+
+      len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld max=%d\n", "read", hptr->name, (long long)off, (int)max);
+	   rc = write(fd_fifo, buff_fifo, len);
+	   if (rc < 1)
+	   {
+	      error("Encountered error during FIFO write in post_read_to_fifo: %d", errno);
+	      return;
+	   }
+   } else {
+	   error("Encountered error in post_read_to_fifo: bad handle");
+   }
+
 }
 
 static void post_write_to_fifo(u_int32_t id)
 {
+   int rc = 0;
+   u_int64_t off = 0;
+   u_int32_t cnt = 0;
+	size_t len = 0;
+	const u_char * handle = NULL;
+   Handle * hptr;
+
 	logit("Processing custom handler override for write.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &handle, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_write_to_fifo: %d", rc);
+	   return;
+	}
+
+   hptr = get_handle(handle, len, -1);
+   if (hptr != NULL) {
+	   debug("Dispatch write to path \"%s\" to event FIFO.", hptr->name);
+
+      /* establish read offset  */
+      off = get_u64(handle + len);
+
+      /* establish read max size */
+      cnt = get_u32(handle + len + sizeof(u_int64_t));
+
+      len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld cnt=%d\n", "write", hptr->name, (long long)off, (int)cnt);
+	   rc = write(fd_fifo, buff_fifo, len);
+	   if (rc < 1)
+	   {
+	      error("Encountered error during FIFO write in post_write_to_fifo: %d", errno);
+	      return;
+	   }
+   } else {
+	   error("Encountered error in post_write_to_fifo: bad handle");
+   }
+
 }
 
 static void post_stat_to_fifo(u_int32_t id)
@@ -157,7 +229,7 @@ static void post_lstat_to_fifo(u_int32_t id)
 
 	debug("Dispatch lstat name \"%.*s\" to event FIFO.", (int)len, path);
 
-   len = sprintf(buff_fifo, "op=lstat path='%.*s'\n", (int)len, path);
+   len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "lstat", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -198,7 +270,7 @@ static void post_opendir_to_fifo(u_int32_t id)
 
 	debug("Dispatch opendir name \"%.*s\" to event FIFO.", (int)len, path);
 
-   len = sprintf(buff_fifo, "op=opendir path='%.*s'\n", (int)len, path);
+   len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "opendir", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -228,7 +300,7 @@ static void post_readdir_to_fifo(u_int32_t id)
    if (hptr != NULL) {
 		debug("Dispatch readdir name \"%s\" to event FIFO.", hptr->name);
 
-      len = sprintf(buff_fifo, "op=readdir path='%s'\n", hptr->name);
+      len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "readdir", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
