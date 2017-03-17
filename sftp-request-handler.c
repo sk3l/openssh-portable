@@ -70,7 +70,7 @@ struct sftp_handler req_overrides[] = {
 
 static void post_open_to_fifo(u_int32_t id)
 {
-   int rc = 0;
+	int rc = 0;
 	size_t len = 0;
 	const u_char * path = NULL;
 
@@ -85,7 +85,7 @@ static void post_open_to_fifo(u_int32_t id)
 
 	debug("Dispatch open name \"%.*s\" to event FIFO.", (int)len, path);
 
-   len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "open", (int)len, path);
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "open", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -95,12 +95,12 @@ static void post_open_to_fifo(u_int32_t id)
 
 static void post_close_to_fifo(u_int32_t id)
 {
-   int rc = 0;
+	int rc = 0;
 	size_t len = 0;
 	const u_char * handle = NULL;
-   Handle * hptr;
+	Handle * hptr;
 
-   logit("Processing custom handler override for close.");
+	logit("Processing custom handler override for close.");
 
 	rc = sshbuf_peek_string_direct(iqueue, &handle, &len);
 	if (rc != 0)
@@ -109,30 +109,30 @@ static void post_close_to_fifo(u_int32_t id)
 	   return;
 	}
 
-   hptr = get_handle(handle, len, -1);
-   if (hptr != NULL) {
+	hptr = get_handle(handle, len, -1);
+	if (hptr != NULL) {
 	   debug("Dispatch close of path \"%s\" to event FIFO.", hptr->name);
 
-      len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "close", hptr->name);
+	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "close", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
 	      error("Encountered error during FIFO write in post_close_to_fifo: %d", errno);
 	      return;
 	   }
-   } else {
+	} else {
 	   error("Encountered error in post_close_to_fifo: bad handle");
-   }
+	}
 }
 
 static void post_read_to_fifo(u_int32_t id)
 {
-   int rc = 0;
-   u_int64_t off = 0;
-   u_int32_t max = 0;
+	int rc = 0;
+	u_int64_t off = 0;
+	u_int32_t max = 0;
 	size_t len = 0;
 	const u_char * handle = NULL;
-   Handle * hptr;
+	Handle * hptr;
 
 	logit("Processing custom handler override for read.");
 
@@ -143,37 +143,37 @@ static void post_read_to_fifo(u_int32_t id)
 	   return;
 	}
 
-   hptr = get_handle(handle, len, -1);
-   if (hptr != NULL) {
+	hptr = get_handle(handle, len, -1);
+	if (hptr != NULL) {
 	   debug("Dispatch read from path \"%s\" to event FIFO.", hptr->name);
 
-      /* establish read offset  */
-      off = get_u64(handle + len);
+	   /* establish read offset  */
+	   off = get_u64(handle + len);
 
-      /* establish read max size */
-      max = get_u32(handle + len + sizeof(u_int64_t));
+	   /* establish read max size */
+	   max = get_u32(handle + len + sizeof(u_int64_t));
 
-      len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld max=%d\n", "read", hptr->name, (long long)off, (int)max);
+	   len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld max=%d\n", "read", hptr->name, (long long)off, (int)max);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
 	      error("Encountered error during FIFO write in post_read_to_fifo: %d", errno);
 	      return;
 	   }
-   } else {
+	} else {
 	   error("Encountered error in post_read_to_fifo: bad handle");
-   }
+	}
 
 }
 
 static void post_write_to_fifo(u_int32_t id)
 {
-   int rc = 0;
-   u_int64_t off = 0;
-   u_int32_t cnt = 0;
+	int rc = 0;
+	u_int64_t off = 0;
+	u_int32_t cnt = 0;
 	size_t len = 0;
 	const u_char * handle = NULL;
-   Handle * hptr;
+	Handle * hptr;
 
 	logit("Processing custom handler override for write.");
 
@@ -184,37 +184,61 @@ static void post_write_to_fifo(u_int32_t id)
 	   return;
 	}
 
-   hptr = get_handle(handle, len, -1);
-   if (hptr != NULL) {
+	hptr = get_handle(handle, len, -1);
+	if (hptr != NULL) {
 	   debug("Dispatch write to path \"%s\" to event FIFO.", hptr->name);
 
-      /* establish read offset  */
-      off = get_u64(handle + len);
+	   /* establish read offset  */
+	   off = get_u64(handle + len);
 
-      /* establish read max size */
-      cnt = get_u32(handle + len + sizeof(u_int64_t));
+	   /* establish read max size */
+	   cnt = get_u32(handle + len + sizeof(u_int64_t));
 
-      len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld cnt=%d\n", "write", hptr->name, (long long)off, (int)cnt);
+	   len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld cnt=%d\n", "write", hptr->name, (long long)off, (int)cnt);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
 	      error("Encountered error during FIFO write in post_write_to_fifo: %d", errno);
 	      return;
 	   }
-   } else {
+	} else {
 	   error("Encountered error in post_write_to_fifo: bad handle");
-   }
+	}
 
 }
 
 static void post_stat_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	size_t len = 0;
+	const u_char * path = NULL;
+
 	logit("Processing custom handler override for stat.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_stat_to_fifo: %d", rc);
+	   return;
+	}
+
+	/* TO DO - parse and communicate file flags */
+
+	debug("Dispatch stat name \"%.*s\" to event FIFO.", (int)len, path);
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "stat", (int)len, path);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_stat_to_fifo: %d", errno);
+	   return;
+	}
+
 }
 
 static void post_lstat_to_fifo(u_int32_t id)
 {
-   int rc = 0;
+	int rc = 0;
 	size_t len = 0;
 	const u_char * path = NULL;
 
@@ -229,7 +253,7 @@ static void post_lstat_to_fifo(u_int32_t id)
 
 	debug("Dispatch lstat name \"%.*s\" to event FIFO.", (int)len, path);
 
-   len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "lstat", (int)len, path);
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "lstat", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -240,7 +264,37 @@ static void post_lstat_to_fifo(u_int32_t id)
 
 static void post_fstat_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	u_int32_t idx_handle = 0;
+	size_t len = 0;
+	const u_char * handle = NULL;
+	Handle * hptr;
+
 	logit("Processing custom handler override for fstat.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &handle, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_fstat_to_fifo: %d", rc);
+	   return;
+	}
+
+	hptr = get_handle(handle, len, HANDLE_DIR);
+	if (hptr != NULL) {
+		debug("Dispatch fstat name \"%s\" to event FIFO.", hptr->name);
+
+	   /* TO DO - parse and communicate file flags */
+
+	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "fstat", hptr->name);
+	   rc = write(fd_fifo, buff_fifo, len);
+	   if (rc < 1)
+	   {
+	      error("Encountered error during FIFO write in post_fstat_to_fifo: %d", errno);
+	      return;
+	   }
+	} else {
+	   error("Encountered error in post_fstat_to_fifo: bad handle idx %d", (int)idx_handle);
+	}
 }
 
 static void post_setstat_to_fifo(u_int32_t id)
@@ -255,7 +309,7 @@ static void post_fsetstat_to_fifo(u_int32_t id)
 
 static void post_opendir_to_fifo(u_int32_t id)
 {
-   int rc = 0;
+	int rc = 0;
 	size_t len = 0;
 	const u_char * path = NULL;
 
@@ -270,7 +324,7 @@ static void post_opendir_to_fifo(u_int32_t id)
 
 	debug("Dispatch opendir name \"%.*s\" to event FIFO.", (int)len, path);
 
-   len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "opendir", (int)len, path);
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "opendir", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -281,11 +335,11 @@ static void post_opendir_to_fifo(u_int32_t id)
 
 static void post_readdir_to_fifo(u_int32_t id)
 {
-   int rc = 0;
-   u_int32_t idx_handle = 0;
+	int rc = 0;
+	u_int32_t idx_handle = 0;
 	size_t len = 0;
 	const u_char * handle = NULL;
-   Handle * hptr;
+	Handle * hptr;
 
 	logit("Processing custom handler override for readdir.");
 
@@ -296,20 +350,20 @@ static void post_readdir_to_fifo(u_int32_t id)
 	   return;
 	}
 
-   hptr = get_handle(handle, len, HANDLE_DIR);
-   if (hptr != NULL) {
+	hptr = get_handle(handle, len, HANDLE_DIR);
+	if (hptr != NULL) {
 		debug("Dispatch readdir name \"%s\" to event FIFO.", hptr->name);
 
-      len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "readdir", hptr->name);
+	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "readdir", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
 	      error("Encountered error during FIFO write in post_readdir_to_fifo: %d", errno);
 	      return;
 	   }
-   } else {
+	} else {
 	   error("Encountered error in post_readdir_to_fifo: bad handle idx %d", (int)idx_handle);
-   }
+	}
 }
 
 static void post_remove_to_fifo(u_int32_t id)
@@ -392,12 +446,12 @@ static void post_symlink_to_fifo(u_int32_t id)
 }
 
 static Handle * get_handle(const char * idx_str, int len, int hkind) {
-   Handle * hptr;
-   u_int idx_handle = -1;
+	Handle * hptr;
+	u_int idx_handle = -1;
 
-   /* Handles are conveyed as string in protocol, but they are really int32
-    * index into global handles array.*/
-   if (len != sizeof(int)) {
+	/* Handles are conveyed as string in protocol, but they are really int32
+	 * index into global handles array.*/
+	if (len != sizeof(int)) {
 	   error("Encountered error in get_handle: handle len of %d", (int)len);
 	   return NULL;
    }
