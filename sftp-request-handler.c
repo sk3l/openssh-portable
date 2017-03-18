@@ -299,12 +299,64 @@ static void post_fstat_to_fifo(u_int32_t id)
 
 static void post_setstat_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	size_t len = 0;
+	const u_char * path = NULL;
+
 	logit("Processing custom handler override for setstat.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_setstat_to_fifo: %d", rc);
+	   return;
+	}
+
+	debug("Dispatch setstat name \"%.*s\" to event FIFO.", (int)len, path);
+
+	/* TO DO - parse and communicate file attrs */
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "setstat", (int)len, path);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_setstat_to_fifo: %d", errno);
+	   return;
+	}
+
 }
 
 static void post_fsetstat_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	u_int32_t idx_handle = 0;
+	size_t len = 0;
+	const u_char * handle = NULL;
+	Handle * hptr;
+
 	logit("Processing custom handler override for fsetstat.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &handle, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_fsetstat_to_fifo: %d", rc);
+	   return;
+	}
+
+	hptr = get_handle(handle, len, HANDLE_DIR);
+	if (hptr != NULL) {
+		debug("Dispatch fsetstat name \"%s\" to event FIFO.", hptr->name);
+
+	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "fsetstat", hptr->name);
+	   rc = write(fd_fifo, buff_fifo, len);
+	   if (rc < 1)
+	   {
+	      error("Encountered error during FIFO write in post_fsetstat_to_fifo: %d", errno);
+	      return;
+	   }
+	} else {
+	   error("Encountered error in post_fsetstat_to_fifo: bad handle idx %d", (int)idx_handle);
+	}
 }
 
 static void post_opendir_to_fifo(u_int32_t id)
@@ -454,23 +506,23 @@ static Handle * get_handle(const char * idx_str, int len, int hkind) {
 	if (len != sizeof(int)) {
 	   error("Encountered error in get_handle: handle len of %d", (int)len);
 	   return NULL;
-   }
-   idx_handle = get_u32(idx_str);
+	}
+	idx_handle = get_u32(idx_str);
 
-   /* Handle check is from get_handle() func in sftp-server.c */
-   if (idx_handle < num_handles) {
-      hptr = &handles[idx_handle];
-      if ((hkind >= 0) && (hptr->use != hkind)) {
+	/* Handle check is from get_handle() func in sftp-server.c */
+	if (idx_handle < num_handles) {
+	   hptr = &handles[idx_handle];
+	   if ((hkind >= 0) && (hptr->use != hkind)) {
 	      error("Encountered error in get_handle: expected handle tpe %d, bu got %d",
-               hkind, hptr->use);
+	            hkind, hptr->use);
 	      return NULL;
-      }
+	   }
 
-      return hptr;
-   }
-   else {
+	   return hptr;
+	}
+	else {
 	   error("Encountered error in get_handle: handle idx %d out of bounds %d",
-           idx_handle, num_handles);
-      return NULL;
-   }
+	        idx_handle, num_handles);
+	   return NULL;
+	}
 }
