@@ -484,7 +484,43 @@ static void post_realpath_to_fifo(u_int32_t id)
 
 static void post_rename_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	u_int len  = 0,
+	      nlen = 0 ;
+	const u_char * buf  = NULL,
+	             * path = NULL,
+	             * npath= NULL;
+
 	logit("Processing custom handler override for rename.");
+
+	/* Since we must extract multiple str (from, to path) we cannot simply peek.
+	 * We must manually parse both strings, as sshbuf peek only enables viewing
+	 * the next available str in the buffer, and not subsequent ones. */
+	buf = sshbuf_ptr(iqueue);
+
+	rc = get_ssh_string(buf, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_rename_to_fifo: %d", rc);
+	   return;
+	}
+
+	rc = get_ssh_string(buf + sizeof(u_int) + len, &npath, &nlen);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_rename_to_fifo: %d", rc);
+	   return;
+	}
+
+	debug("Dispatch rename from \"%.*s\" to \"%.*s\" to event FIFO.", (int)len, path, (int)nlen, npath);
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s' npath='%.*s'\n", "rename", (int)len, path, (int)nlen, npath);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   return;
+	}
 }
 
 static void post_readlink_to_fifo(u_int32_t id)
