@@ -31,7 +31,7 @@ int init_handler_overrides(handler_list * htbl)
 	}
 
 	/* Insert event handlers overrides*/
-	for (i = 0; i <= SSH2_FXP_CNT; i++) {
+	for (i = 0; i < SSH2_FXP_MAX; i++) {
 	   if (req_overrides[i].handler == NULL)
 	      continue;
 
@@ -49,7 +49,7 @@ int init_handler_overrides(handler_list * htbl)
 
 int get_ssh_string(const char * buf, const u_char ** str, u_int * lenp)
 {
-   if ((buf == NULL) || (str == NULL) || (*str == NULL))
+   if ((buf == NULL) || (str == NULL))
    {
       return 1;
    }

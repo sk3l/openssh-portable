@@ -136,7 +136,7 @@ struct sftp_handler handlers[] = {
 	   { "symlink", NULL, SSH2_FXP_SYMLINK, process_symlink, 1 },
 };
 
-handler_list handler_table [SSH2_FXP_CNT];
+handler_list handler_table [SSH2_FXP_MAX];
 
 static void init_handler_type(u_int type) {
 	if (handlers[type].handler != NULL) {
@@ -1448,7 +1448,7 @@ process(void)
 		if ((r = sshbuf_get_u32(iqueue, &id)) != 0)
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-	   if (type < SSH2_FXP_CNT) {
+	   if (type < SSH2_FXP_MAX) {
 	      hlist = handler_table[type];
 
 	      /* Execute every handler in the list for this table entry. */
@@ -1528,7 +1528,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	sleep(30);
 
 	/* Initialize the handler table with the default packet handlers */
-	for (i = 0; i <= SSH2_FXP_CNT; i++) {
+	for (i = 0; i < SSH2_FXP_MAX; i++) {
 	   init_handler_type(i);
 	}
 
@@ -1545,7 +1545,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 				fprintf(stderr, "Invalid query type\n");
 				exit(1);
 			}
-			for (i = 0; i < SSH2_FXP_CNT; i++) {
+			for (i = 0; i < SSH2_FXP_MAX; i++) {
 				for (len = 0;
 	             (handler_table[i] != NULL) && (handler_table[i][len] != NULL);
 	              len++) {
