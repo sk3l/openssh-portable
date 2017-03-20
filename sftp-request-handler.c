@@ -65,7 +65,7 @@ struct sftp_handler req_overrides[] = {
 	   { "stat to fifo", NULL, SSH2_FXP_STAT, post_stat_to_fifo, 0 },
 	   { "rename to fifo", NULL, SSH2_FXP_RENAME, post_rename_to_fifo, 1 },
 	   { "readlink to fifo", NULL, SSH2_FXP_READLINK, post_readlink_to_fifo, 0 },
-	   { "print symlink to fifo", NULL, SSH2_FXP_SYMLINK, post_symlink_to_fifo, 1 },
+	   { "symlink to fifo", NULL, SSH2_FXP_SYMLINK, post_symlink_to_fifo, 1 },
 };
 
 static void post_open_to_fifo(u_int32_t id)
@@ -546,12 +546,69 @@ static void post_rename_to_fifo(u_int32_t id)
 
 static void post_readlink_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	size_t len = 0;
+	const u_char * path = NULL;
+
 	logit("Processing custom handler override for readlink.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_readlink_to_fifo: %d", rc);
+	   return;
+	}
+
+	debug("Dispatch readlink name \"%.*s\" to event FIFO.", (int)len, path);
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "readlink", (int)len, path);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_readlink_to_fifo: %d", errno);
+	   return;
+	}
 }
 
 static void post_symlink_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	u_int len  = 0,
+	      nlen = 0 ;
+	const u_char * buf  = NULL,
+	             * path = NULL,
+	             * npath= NULL;
+
 	logit("Processing custom handler override for symlink.");
+
+	/* Since we must extract multiple str (from, to path) we cannot simply peek.
+	 * We must manually parse both strings, as sshbuf peek only enables viewing
+	 * the next available str in the buffer, and not subsequent ones. */
+	buf = sshbuf_ptr(iqueue);
+
+	rc = get_ssh_string(buf, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_symlink_to_fifo: %d", rc);
+	   return;
+	}
+
+	rc = get_ssh_string(buf + sizeof(u_int) + len, &npath, &nlen);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_symlink_to_fifo: %d", rc);
+	   return;
+	}
+
+	debug("Dispatch symlink to \"%.*s\" from \"%.*s\" to event FIFO.", (int)nlen, npath, (int)len, path);
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s' newpath='%.*s'\n", "symlink", (int)len, path, (int)nlen, npath);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   return;
+	}
 }
 
 static Handle * get_handle(const char * idx_str, int len, int hkind) {
