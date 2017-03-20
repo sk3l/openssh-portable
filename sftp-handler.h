@@ -21,4 +21,6 @@ handler_ptr alloc_handler(
 
 int init_handler_overrides(handler_list * handlers);
 
+int get_ssh_string(const char * buf, const u_char ** str, u_int * len);
+
 #endif
