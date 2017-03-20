@@ -47,3 +47,15 @@ int init_handler_overrides(handler_list * htbl)
 	return 1;
 }
 
+int get_ssh_string(const char * buf, const u_char ** str, u_int * lenp)
+{
+   if ((buf == NULL) || (str == NULL) || (*str == NULL))
+   {
+      return 1;
+   }
+
+   *lenp = get_u32(buf);
+   *str  = buf + sizeof(u_int);
+
+   return 0;
+}
