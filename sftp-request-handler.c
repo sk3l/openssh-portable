@@ -420,7 +420,28 @@ static void post_readdir_to_fifo(u_int32_t id)
 
 static void post_remove_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	size_t len = 0;
+	const u_char * path = NULL;
+
 	logit("Processing custom handler override for remove.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_remove_to_fifo: %d", rc);
+	   return;
+	}
+
+	debug("Dispatch remove name \"%.*s\" to event FIFO.", (int)len, path);
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "remove", (int)len, path);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_remove_to_fifo: %d", errno);
+	   return;
+	}
 }
 
 static void post_mkdir_to_fifo(u_int32_t id)
@@ -472,7 +493,7 @@ static void post_rmdir_to_fifo(u_int32_t id)
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   error("Encountered error during FIFO write in post_rmdir_to_fifo: %d", errno);
 	   return;
 	}
 }
