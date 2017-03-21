@@ -85,7 +85,7 @@ static void post_open_to_fifo(u_int32_t id)
 
 	debug("Dispatch open name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "open", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "open", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -113,7 +113,7 @@ static void post_close_to_fifo(u_int32_t id)
 	if (hptr != NULL) {
 	   debug("Dispatch close of path \"%s\" to event FIFO.", hptr->name);
 
-	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "close", hptr->name);
+	   len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%s'\n", id, "close", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -153,7 +153,7 @@ static void post_read_to_fifo(u_int32_t id)
 	   /* establish read max size */
 	   max = get_u32(handle + len + sizeof(u_int64_t));
 
-	   len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld max=%d\n", "read", hptr->name, (long long)off, (int)max);
+	   len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%s' off=%lld max=%d\n", id, "read", hptr->name, (long long)off, (int)max);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -194,7 +194,7 @@ static void post_write_to_fifo(u_int32_t id)
 	   /* establish read max size */
 	   cnt = get_u32(handle + len + sizeof(u_int64_t));
 
-	   len = sprintf(buff_fifo, "op=%-10s path='%s' off=%lld cnt=%d\n", "write", hptr->name, (long long)off, (int)cnt);
+	   len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%s' off=%lld cnt=%d\n", id, "write", hptr->name, (long long)off, (int)cnt);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -226,7 +226,7 @@ static void post_stat_to_fifo(u_int32_t id)
 
 	debug("Dispatch stat name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "stat", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "stat", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -253,7 +253,7 @@ static void post_lstat_to_fifo(u_int32_t id)
 
 	debug("Dispatch lstat name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "lstat", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "lstat", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -285,7 +285,7 @@ static void post_fstat_to_fifo(u_int32_t id)
 
 	   /* TO DO - parse and communicate file flags */
 
-	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "fstat", hptr->name);
+	   len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%s'\n", id, "fstat", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -316,7 +316,7 @@ static void post_setstat_to_fifo(u_int32_t id)
 
 	/* TO DO - parse and communicate file attrs */
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "setstat", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "setstat", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -347,7 +347,7 @@ static void post_fsetstat_to_fifo(u_int32_t id)
 	if (hptr != NULL) {
 		debug("Dispatch fsetstat name \"%s\" to event FIFO.", hptr->name);
 
-	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "fsetstat", hptr->name);
+	   len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%s'\n", id, "fsetstat", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -376,7 +376,7 @@ static void post_opendir_to_fifo(u_int32_t id)
 
 	debug("Dispatch opendir name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "opendir", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "opendir", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -406,7 +406,7 @@ static void post_readdir_to_fifo(u_int32_t id)
 	if (hptr != NULL) {
 		debug("Dispatch readdir name \"%s\" to event FIFO.", hptr->name);
 
-	   len = sprintf(buff_fifo, "op=%-10s path='%s'\n", "readdir", hptr->name);
+	   len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%s'\n", id, "readdir", hptr->name);
 	   rc = write(fd_fifo, buff_fifo, len);
 	   if (rc < 1)
 	   {
@@ -435,7 +435,7 @@ static void post_remove_to_fifo(u_int32_t id)
 
 	debug("Dispatch remove name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "remove", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "remove", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -463,7 +463,7 @@ static void post_mkdir_to_fifo(u_int32_t id)
 
 	/* TO DO - parse and communicate file attrs */
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "mkdir", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "mkdir", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -489,7 +489,7 @@ static void post_rmdir_to_fifo(u_int32_t id)
 
 	debug("Dispatch rmdir name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "rmdir", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "rmdir", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -517,7 +517,7 @@ static void post_realpath_to_fifo(u_int32_t id)
 
 	debug("Dispatch realpath name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "realpath", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "realpath", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -558,7 +558,7 @@ static void post_rename_to_fifo(u_int32_t id)
 
 	debug("Dispatch rename from \"%.*s\" to \"%.*s\" to event FIFO.", (int)len, path, (int)nlen, npath);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s' npath='%.*s'\n", "rename", (int)len, path, (int)nlen, npath);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s' npath='%.*s'\n", id, "rename", (int)len, path, (int)nlen, npath);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -584,7 +584,7 @@ static void post_readlink_to_fifo(u_int32_t id)
 
 	debug("Dispatch readlink name \"%.*s\" to event FIFO.", (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "readlink", (int)len, path);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s'\n", id, "readlink", (int)len, path);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
@@ -625,7 +625,7 @@ static void post_symlink_to_fifo(u_int32_t id)
 
 	debug("Dispatch symlink to \"%.*s\" from \"%.*s\" to event FIFO.", (int)nlen, npath, (int)len, path);
 
-	len = sprintf(buff_fifo, "op=%-10s path='%.*s' newpath='%.*s'\n", "symlink", (int)len, path, (int)nlen, npath);
+	len = sprintf(buff_fifo, "id=%-10d op=%-10s path='%.*s' newpath='%.*s'\n", id, "symlink", (int)len, path, (int)nlen, npath);
 	rc = write(fd_fifo, buff_fifo, len);
 	if (rc < 1)
 	{
