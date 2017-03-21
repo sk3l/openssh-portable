@@ -500,7 +500,30 @@ static void post_rmdir_to_fifo(u_int32_t id)
 
 static void post_realpath_to_fifo(u_int32_t id)
 {
+	int rc = 0;
+	size_t len = 0;
+	const u_char * path = NULL;
+
 	logit("Processing custom handler override for realpath.");
+
+	rc = sshbuf_peek_string_direct(iqueue, &path, &len);
+	if (rc != 0)
+	{
+	   error("Encountered error during SSH buff peek in post_realpath_to_fifo: %d", rc);
+	   return;
+	}
+
+	/* TO DO - parse and communicate control byte & component paths */
+
+	debug("Dispatch realpath name \"%.*s\" to event FIFO.", (int)len, path);
+
+	len = sprintf(buff_fifo, "op=%-10s path='%.*s'\n", "realpath", (int)len, path);
+	rc = write(fd_fifo, buff_fifo, len);
+	if (rc < 1)
+	{
+	   error("Encountered error during FIFO write in post_realpath_to_fifo: %d", errno);
+	   return;
+	}
 }
 
 static void post_rename_to_fifo(u_int32_t id)
