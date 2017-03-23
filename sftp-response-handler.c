@@ -17,9 +17,6 @@ extern struct sshbuf * oqueue;
 
 extern int fd_fifo;
 
-extern Handle * handles;
-extern u_int num_handles;
-
 static char buff_fifo[34000]; /* max packet size from SFTP protocol */
 
 static void post_response_to_fifo(u_int32_t id);
@@ -43,9 +40,12 @@ static void post_response_to_fifo(u_int32_t id)
 	size_t len = 0;
    u_int  mlen = 0;
 	u_char resp_type;
+
    const u_char * resp_ptr = NULL,
                 * resp_str = NULL,
                 * resp_msg = NULL;
+
+   Handle * hptr = NULL;
 
 	logit("Processing custom handler override SFTP response messages.");
 
@@ -75,6 +75,26 @@ static void post_response_to_fifo(u_int32_t id)
 	   }
 
       len = sprintf(buff_fifo, "id=%-10d resp=%-10s msg='%.*s'\n", id, resp_str, (int)mlen, resp_msg);
+   }
+   else if (resp_type == SSH2_FXP_HANDLE)
+   {
+      resp_type -= 100;
+      resp_str = rsp_strings[resp_type];
+
+      rc = get_ssh_string(resp_ptr + 1 + 2*(sizeof(u_int)), &resp_msg, &mlen);
+	   if (rc != 0)
+	   {
+	      error("Encountered error during SSH buff peek in post_response_to_fifo: %d", rc);
+	      return;
+	   }
+
+	   hptr = get_sftp_handle(resp_msg, mlen, -1);
+		if (hptr != NULL) {
+         len = sprintf(buff_fifo, "id=%-10d resp=%-10s path='%s'\n", id, resp_str, hptr->name);
+      } else {
+	      error("Encountered error in post_close_to_fifo: bad handle");
+         return;
+	   }
    }
    else if (resp_type == SSH2_FXP_DATA)
    {
