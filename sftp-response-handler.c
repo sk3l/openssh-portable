@@ -74,7 +74,7 @@ static void post_response_to_fifo(u_int32_t id)
 	      return;
 	   }
 
-      len = sprintf(buff_fifo, "id=%-10d resp=%-10s msg=%.*s\n", id, resp_str, (int)mlen, resp_msg);
+      len = sprintf(buff_fifo, "id=%-10d resp=%-10s msg='%.*s'\n", id, resp_str, (int)mlen, resp_msg);
    }
    else if (resp_type == SSH2_FXP_DATA)
    {
