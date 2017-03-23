@@ -272,7 +272,7 @@ string_from_portable(int pflags)
 }
 
 /* handle handles */
-
+/*
 typedef struct Handle Handle;
 struct Handle {
 	int use;
@@ -289,7 +289,7 @@ enum {
 	HANDLE_DIR,
 	HANDLE_FILE
 };
-
+*/
 Handle *handles = NULL;
 u_int num_handles = 0;
 int first_unused_handle = -1;

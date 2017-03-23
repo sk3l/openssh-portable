@@ -13,6 +13,9 @@
 int fd_fifo;
 static const char * path_fifo = "/tmp/sftp_evts";
 
+extern Handle * handles;
+extern u_int num_handles;
+
 extern struct sftp_handler req_overrides[];
 extern struct sftp_handler rsp_overrides[];
 
@@ -49,6 +52,39 @@ int init_handler_overrides(handler_list * htbl)
 	return 1;
 }
 
+/* Helper func to lookup & retrieve ptr to Handle from SFTP server module. */
+Handle * get_sftp_handle(const char * idx_str, int len, int hkind) {
+	Handle * hptr;
+	u_int idx_handle = -1;
+
+	/* Handles are conveyed as string in protocol, but they are really int32
+	 * index into global handles array.*/
+	if (len != sizeof(int)) {
+	   error("Encountered error in get_handle: handle len of %d", (int)len);
+	   return NULL;
+	}
+	idx_handle = get_u32(idx_str);
+
+	/* Handle check is from get_handle() func in sftp-server.c */
+	if (idx_handle < num_handles) {
+	   hptr = &handles[idx_handle];
+	   if ((hkind >= 0) && (hptr->use != hkind)) {
+	      error("Encountered error in get_handle: expected handle tpe %d, bu got %d",
+	            hkind, hptr->use);
+	      return NULL;
+	   }
+
+	   return hptr;
+	}
+	else {
+	   error("Encountered error in get_handle: handle idx %d out of bounds %d",
+	        idx_handle, num_handles);
+	   return NULL;
+	}
+}
+
+/* Helper func to peek at string value contained in SFTP protocol payload.
+ * Note structure of strings follows SSH convetion: (<int_len>+<value>) */ 
 int get_ssh_string(const char * buf, const u_char ** str, u_int * lenp)
 {
    if ((buf == NULL) || (str == NULL))
