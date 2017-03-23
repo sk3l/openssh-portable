@@ -17,9 +17,6 @@ extern struct sshbuf * iqueue;
 
 extern int fd_fifo;
 
-extern Handle * handles;
-extern u_int num_handles;
-
 static char buff_fifo[34000]; /* max packet size from SFTP protocol */
 
 static void post_open_to_fifo(u_int32_t id);
@@ -40,8 +37,6 @@ static void post_realpath_to_fifo(u_int32_t id);
 static void post_rename_to_fifo(u_int32_t id);
 static void post_readlink_to_fifo(u_int32_t id);
 static void post_symlink_to_fifo(u_int32_t id);
-
-static Handle * get_handle(const char *, int, int);
 
 struct sftp_handler req_overrides[] = {
 	   { NULL, NULL, 0, NULL, 0 },
@@ -109,7 +104,7 @@ static void post_close_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	hptr = get_handle(handle, len, -1);
+	hptr = get_sftp_handle(handle, len, -1);
 	if (hptr != NULL) {
 	   debug("Dispatch close of path \"%s\" to event FIFO.", hptr->name);
 
@@ -143,7 +138,7 @@ static void post_read_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	hptr = get_handle(handle, len, -1);
+	hptr = get_sftp_handle(handle, len, -1);
 	if (hptr != NULL) {
 	   debug("Dispatch read from path \"%s\" to event FIFO.", hptr->name);
 
@@ -184,7 +179,7 @@ static void post_write_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	hptr = get_handle(handle, len, -1);
+	hptr = get_sftp_handle(handle, len, -1);
 	if (hptr != NULL) {
 	   debug("Dispatch write to path \"%s\" to event FIFO.", hptr->name);
 
@@ -279,7 +274,7 @@ static void post_fstat_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	hptr = get_handle(handle, len, HANDLE_DIR);
+	hptr = get_sftp_handle(handle, len, HANDLE_DIR);
 	if (hptr != NULL) {
 		debug("Dispatch fstat name \"%s\" to event FIFO.", hptr->name);
 
@@ -343,7 +338,7 @@ static void post_fsetstat_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	hptr = get_handle(handle, len, HANDLE_DIR);
+	hptr = get_sftp_handle(handle, len, HANDLE_DIR);
 	if (hptr != NULL) {
 		debug("Dispatch fsetstat name \"%s\" to event FIFO.", hptr->name);
 
@@ -402,7 +397,7 @@ static void post_readdir_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	hptr = get_handle(handle, len, HANDLE_DIR);
+	hptr = get_sftp_handle(handle, len, HANDLE_DIR);
 	if (hptr != NULL) {
 		debug("Dispatch readdir name \"%s\" to event FIFO.", hptr->name);
 
@@ -634,32 +629,3 @@ static void post_symlink_to_fifo(u_int32_t id)
 	}
 }
 
-static Handle * get_handle(const char * idx_str, int len, int hkind) {
-	Handle * hptr;
-	u_int idx_handle = -1;
-
-	/* Handles are conveyed as string in protocol, but they are really int32
-	 * index into global handles array.*/
-	if (len != sizeof(int)) {
-	   error("Encountered error in get_handle: handle len of %d", (int)len);
-	   return NULL;
-	}
-	idx_handle = get_u32(idx_str);
-
-	/* Handle check is from get_handle() func in sftp-server.c */
-	if (idx_handle < num_handles) {
-	   hptr = &handles[idx_handle];
-	   if ((hkind >= 0) && (hptr->use != hkind)) {
-	      error("Encountered error in get_handle: expected handle tpe %d, bu got %d",
-	            hkind, hptr->use);
-	      return NULL;
-	   }
-
-	   return hptr;
-	}
-	else {
-	   error("Encountered error in get_handle: handle idx %d out of bounds %d",
-	        idx_handle, num_handles);
-	   return NULL;
-	}
-}
