@@ -14,6 +14,7 @@ int fd_fifo;
 static const char * path_fifo = "/tmp/sftp_evts";
 
 extern struct sftp_handler req_overrides[];
+extern struct sftp_handler rsp_overrides[];
 
 int init_handler_overrides(handler_list * htbl)
 {
@@ -37,9 +38,10 @@ int init_handler_overrides(handler_list * htbl)
 
 	   hlist = htbl[i];
 
-	   new_hlist = (handler_list) xcalloc(sizeof(handler_ptr), 3);
+	   new_hlist = (handler_list) xcalloc(sizeof(handler_ptr), 4);
 	   new_hlist[0] = &req_overrides[i];
 	   new_hlist[1] = hlist[0];
+	   new_hlist[2] = &rsp_overrides[0];
 
 	   htbl[i] = new_hlist;
 	   free(hlist);
