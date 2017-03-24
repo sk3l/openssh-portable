@@ -34,6 +34,8 @@ static const char * rsp_strings [] = {
    "attrs"
 };
 
+static size_t RESPONSE_OFFSET = sizeof(u_int) + sizeof(char) + sizeof(u_int);
+
 static void post_response_to_fifo(u_int32_t id)
 {
 	int rc = 0;
@@ -60,14 +62,16 @@ static void post_response_to_fifo(u_int32_t id)
 
    resp_type = *(resp_ptr + sizeof(u_int));
       
-   if (resp_type == 0)
+   if (resp_type == SSH2_FX_OK)
+   {
       resp_str = rsp_strings[0];
+   }
    else if (resp_type == SSH2_FXP_STATUS)
    {
       resp_type -= 100;
       resp_str = rsp_strings[resp_type];
 
-      rc = get_ssh_string(resp_ptr + 1 + 3*(sizeof(u_int)), &resp_msg, &mlen);
+      rc = get_ssh_string(resp_ptr + RESPONSE_OFFSET + (sizeof(u_int)), &resp_msg, &mlen);
 	   if (rc != 0)
 	   {
 	      error("Encountered error during SSH buff peek in post_response_to_fifo: %d", rc);
@@ -81,7 +85,7 @@ static void post_response_to_fifo(u_int32_t id)
       resp_type -= 100;
       resp_str = rsp_strings[resp_type];
 
-      rc = get_ssh_string(resp_ptr + 1 + 2*(sizeof(u_int)), &resp_msg, &mlen);
+      rc = get_ssh_string(resp_ptr + RESPONSE_OFFSET, &resp_msg, &mlen);
 	   if (rc != 0)
 	   {
 	      error("Encountered error during SSH buff peek in post_response_to_fifo: %d", rc);
@@ -101,9 +105,18 @@ static void post_response_to_fifo(u_int32_t id)
       resp_type -= 100;
       resp_str = rsp_strings[resp_type];
 
-      mlen = get_u32(resp_ptr + 1 + 2*sizeof(u_int));
+      mlen = get_u32(resp_ptr + RESPONSE_OFFSET);
 
       len = sprintf(buff_fifo, "id=%-10d resp=%-10s len=%d\n", id, resp_str, mlen);
+   }
+   else if (resp_type == SSH2_FXP_NAME)
+   {
+      resp_type -= 100;
+      resp_str = rsp_strings[resp_type];
+
+      mlen = get_u32(resp_ptr + RESPONSE_OFFSET);
+
+      len = sprintf(buff_fifo, "id=%-10d resp=%-10s cnt=%d\n", id, resp_str, mlen);
    }
    else if (resp_type > SSH2_FXP_STATUS || resp_type <= SSH2_FXP_ATTRS)
    {
