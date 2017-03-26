@@ -1525,7 +1525,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	pw = pwcopy(user_pw);
 
 	/* test */
-	sleep(30);
+	/*sleep(30);*/
 
 	/* Initialize the handler table with the default packet handlers */
 	for (i = 0; i < SSH2_FXP_MAX; i++) {
