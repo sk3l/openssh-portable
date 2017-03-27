@@ -1,17 +1,14 @@
 
 #include "sftp-handler.h"
+#include "sftp-handler-sink.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include "log.h"
 #include "misc.h"
 #include "sftp.h"
 #include "xmalloc.h"
-
-int fd_fifo;
-static const char * path_fifo = "/tmp/sftp_evts";
 
 extern Handle * handles;
 extern u_int num_handles;
@@ -25,14 +22,13 @@ int init_handler_overrides(handler_list * htbl)
 	handler_list   hlist = NULL,
 	           new_hlist = NULL;
 
-	logit("Initializing custom handler overrides.");
-
-	fd_fifo = open(path_fifo, O_WRONLY | O_NONBLOCK);
-	if (fd_fifo < 0)
+	if (!init_handler_sink())
 	{
-	   error("Encountered error opening SFTP event FIFO: %d", errno);
+	   error("Encountered error initializing the SFTP handler sink: %d", errno);
 	   return 0;
 	}
+
+	logit("Initializing custom handler overrides.");
 
 	/* Insert event handlers overrides*/
 	for (i = 0; i < SSH2_FXP_MAX; i++) {
@@ -87,13 +83,13 @@ Handle * get_sftp_handle(const char * idx_str, int len, int hkind) {
  * Note structure of strings follows SSH convetion: (<int_len>+<value>) */ 
 int get_ssh_string(const char * buf, const u_char ** str, u_int * lenp)
 {
-   if ((buf == NULL) || (str == NULL))
-   {
-      return 1;
-   }
+	if ((buf == NULL) || (str == NULL))
+	{
+	   return 1;
+	}
 
-   *lenp = get_u32(buf);
-   *str  = buf + sizeof(u_int);
+	*lenp = get_u32(buf);
+	*str  = buf + sizeof(u_int);
 
-   return 0;
+	return 0;
 }
