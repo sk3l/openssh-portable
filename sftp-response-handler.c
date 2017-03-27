@@ -1,5 +1,6 @@
 
 #include "sftp-handler.h"
+#include "sftp-handler-sink.h"
 #include "sftp-response-handler.h"
 
 #include <fcntl.h>
@@ -14,8 +15,6 @@
 #include "xmalloc.h"
 
 extern struct sshbuf * oqueue;
-
-extern int fd_fifo;
 
 static char buff_fifo[34000]; /* max packet size from SFTP protocol */
 
@@ -130,10 +129,10 @@ static void post_response_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_open_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_open_to_fifo: %d", errno);
 	}
 }
 

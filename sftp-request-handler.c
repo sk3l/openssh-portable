@@ -1,5 +1,6 @@
 
 #include "sftp-handler.h"
+#include "sftp-handler-sink.h" 
 #include "sftp-request-handler.h"
 
 #include <fcntl.h>
@@ -14,8 +15,6 @@
 #include "xmalloc.h"
 
 extern struct sshbuf * iqueue;
-
-extern int fd_fifo;
 
 static char buff_fifo[34000]; /* max packet size from SFTP protocol */
 
@@ -78,13 +77,13 @@ static void post_open_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch open name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch open name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "open", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_open_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_open_to_fifo: %d", errno);
 	}
 }
 
@@ -106,13 +105,13 @@ static void post_close_to_fifo(u_int32_t id)
 
 	hptr = get_sftp_handle(handle, len, -1);
 	if (hptr != NULL) {
-	   debug("Dispatch close of path \"%s\" to event FIFO.", hptr->name);
+	   debug("Dispatch close of path \"%s\" to SFTP handler sink.", hptr->name);
 
 	   len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%s'\n", id, "close", hptr->name);
-	   rc = write(fd_fifo, buff_fifo, len);
+	   rc = write_to_handler_sink(buff_fifo, len);
 	   if (rc < 1)
 	   {
-	      error("Encountered error during FIFO write in post_close_to_fifo: %d", errno);
+	      error("Encountered error during write to SFTP handler sink in post_close_to_fifo: %d", errno);
 	      return;
 	   }
 	} else {
@@ -140,7 +139,7 @@ static void post_read_to_fifo(u_int32_t id)
 
 	hptr = get_sftp_handle(handle, len, -1);
 	if (hptr != NULL) {
-	   debug("Dispatch read from path \"%s\" to event FIFO.", hptr->name);
+	   debug("Dispatch read from path \"%s\" to SFTP handler sink.", hptr->name);
 
 	   /* establish read offset  */
 	   off = get_u64(handle + len);
@@ -149,10 +148,10 @@ static void post_read_to_fifo(u_int32_t id)
 	   max = get_u32(handle + len + sizeof(u_int64_t));
 
 	   len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%s' off=%lld max=%d\n", id, "read", hptr->name, (long long)off, (int)max);
-	   rc = write(fd_fifo, buff_fifo, len);
+	   rc = write_to_handler_sink(buff_fifo, len);
 	   if (rc < 1)
 	   {
-	      error("Encountered error during FIFO write in post_read_to_fifo: %d", errno);
+	      error("Encountered error during write to SFTP handler sink in post_read_to_fifo: %d", errno);
 	      return;
 	   }
 	} else {
@@ -181,7 +180,7 @@ static void post_write_to_fifo(u_int32_t id)
 
 	hptr = get_sftp_handle(handle, len, -1);
 	if (hptr != NULL) {
-	   debug("Dispatch write to path \"%s\" to event FIFO.", hptr->name);
+	   debug("Dispatch write to path \"%s\" to SFTP handler sink.", hptr->name);
 
 	   /* establish read offset  */
 	   off = get_u64(handle + len);
@@ -190,10 +189,10 @@ static void post_write_to_fifo(u_int32_t id)
 	   cnt = get_u32(handle + len + sizeof(u_int64_t));
 
 	   len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%s' off=%lld cnt=%d\n", id, "write", hptr->name, (long long)off, (int)cnt);
-	   rc = write(fd_fifo, buff_fifo, len);
+	   rc = write_to_handler_sink(buff_fifo, len);
 	   if (rc < 1)
 	   {
-	      error("Encountered error during FIFO write in post_write_to_fifo: %d", errno);
+	      error("Encountered error during write to SFTP handler sink in post_write_to_fifo: %d", errno);
 	      return;
 	   }
 	} else {
@@ -219,13 +218,13 @@ static void post_stat_to_fifo(u_int32_t id)
 
 	/* TO DO - parse and communicate file flags */
 
-	debug("Dispatch stat name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch stat name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "stat", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_stat_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_stat_to_fifo: %d", errno);
 	   return;
 	}
 
@@ -246,13 +245,13 @@ static void post_lstat_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch lstat name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch lstat name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "lstat", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_lstat_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_lstat_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -276,15 +275,15 @@ static void post_fstat_to_fifo(u_int32_t id)
 
 	hptr = get_sftp_handle(handle, len, HANDLE_DIR);
 	if (hptr != NULL) {
-		debug("Dispatch fstat name \"%s\" to event FIFO.", hptr->name);
+		debug("Dispatch fstat name \"%s\" to SFTP handler sink.", hptr->name);
 
 	   /* TO DO - parse and communicate file flags */
 
 	   len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%s'\n", id, "fstat", hptr->name);
-	   rc = write(fd_fifo, buff_fifo, len);
+	   rc = write_to_handler_sink(buff_fifo, len);
 	   if (rc < 1)
 	   {
-	      error("Encountered error during FIFO write in post_fstat_to_fifo: %d", errno);
+	      error("Encountered error during write to SFTP handler sink in post_fstat_to_fifo: %d", errno);
 	      return;
 	   }
 	} else {
@@ -307,15 +306,15 @@ static void post_setstat_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch setstat name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch setstat name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	/* TO DO - parse and communicate file attrs */
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "setstat", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_setstat_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_setstat_to_fifo: %d", errno);
 	   return;
 	}
 
@@ -340,13 +339,13 @@ static void post_fsetstat_to_fifo(u_int32_t id)
 
 	hptr = get_sftp_handle(handle, len, HANDLE_DIR);
 	if (hptr != NULL) {
-		debug("Dispatch fsetstat name \"%s\" to event FIFO.", hptr->name);
+		debug("Dispatch fsetstat name \"%s\" to SFTP handler sink.", hptr->name);
 
 	   len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%s'\n", id, "fsetstat", hptr->name);
-	   rc = write(fd_fifo, buff_fifo, len);
+	   rc = write_to_handler_sink(buff_fifo, len);
 	   if (rc < 1)
 	   {
-	      error("Encountered error during FIFO write in post_fsetstat_to_fifo: %d", errno);
+	      error("Encountered error during write to SFTP handler sink in post_fsetstat_to_fifo: %d", errno);
 	      return;
 	   }
 	} else {
@@ -369,13 +368,13 @@ static void post_opendir_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch opendir name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch opendir name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "opendir", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_opendir_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -399,13 +398,13 @@ static void post_readdir_to_fifo(u_int32_t id)
 
 	hptr = get_sftp_handle(handle, len, HANDLE_DIR);
 	if (hptr != NULL) {
-		debug("Dispatch readdir name \"%s\" to event FIFO.", hptr->name);
+		debug("Dispatch readdir name \"%s\" to SFTP handler sink.", hptr->name);
 
 	   len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%s'\n", id, "readdir", hptr->name);
-	   rc = write(fd_fifo, buff_fifo, len);
+	   rc = write_to_handler_sink(buff_fifo, len);
 	   if (rc < 1)
 	   {
-	      error("Encountered error during FIFO write in post_readdir_to_fifo: %d", errno);
+	      error("Encountered error during write to SFTP handler sink in post_readdir_to_fifo: %d", errno);
 	      return;
 	   }
 	} else {
@@ -428,13 +427,13 @@ static void post_remove_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch remove name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch remove name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "remove", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_remove_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_remove_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -454,15 +453,15 @@ static void post_mkdir_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch mkdir name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch mkdir name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	/* TO DO - parse and communicate file attrs */
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "mkdir", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_opendir_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -482,13 +481,13 @@ static void post_rmdir_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch rmdir name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch rmdir name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "rmdir", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_rmdir_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_rmdir_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -510,13 +509,13 @@ static void post_realpath_to_fifo(u_int32_t id)
 
 	/* TO DO - parse and communicate control byte & component paths */
 
-	debug("Dispatch realpath name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch realpath name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "realpath", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_realpath_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_realpath_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -551,13 +550,13 @@ static void post_rename_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch rename from \"%.*s\" to \"%.*s\" to event FIFO.", (int)len, path, (int)nlen, npath);
+	debug("Dispatch rename from \"%.*s\" to \"%.*s\" to SFTP handler sink.", (int)len, path, (int)nlen, npath);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s' npath='%.*s'\n", id, "rename", (int)len, path, (int)nlen, npath);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_opendir_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -577,13 +576,13 @@ static void post_readlink_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch readlink name \"%.*s\" to event FIFO.", (int)len, path);
+	debug("Dispatch readlink name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s'\n", id, "readlink", (int)len, path);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_readlink_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_readlink_to_fifo: %d", errno);
 	   return;
 	}
 }
@@ -618,13 +617,13 @@ static void post_symlink_to_fifo(u_int32_t id)
 	   return;
 	}
 
-	debug("Dispatch symlink to \"%.*s\" from \"%.*s\" to event FIFO.", (int)nlen, npath, (int)len, path);
+	debug("Dispatch symlink to \"%.*s\" from \"%.*s\" to SFTP handler sink.", (int)nlen, npath, (int)len, path);
 
 	len = sprintf(buff_fifo, "id=%-10d rqst=%-10s path='%.*s' newpath='%.*s'\n", id, "symlink", (int)len, path, (int)nlen, npath);
-	rc = write(fd_fifo, buff_fifo, len);
+	rc = write_to_handler_sink(buff_fifo, len);
 	if (rc < 1)
 	{
-	   error("Encountered error during FIFO write in post_opendir_to_fifo: %d", errno);
+	   error("Encountered error during write to SFTP handler sink in post_opendir_to_fifo: %d", errno);
 	   return;
 	}
 }
