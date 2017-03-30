@@ -4,6 +4,8 @@
 #include "includes.h"
 #include <dirent.h>
 
+#define SFTP_MAX_HANDLER_MSG_LENGTH 1024 
+
 /* redeclaration from sftp-server.c (need to make a common module)*/
 typedef struct Handle Handle;
 struct Handle {
