@@ -18,7 +18,7 @@
 
 extern struct sshbuf * oqueue;
 
-static char buff_sink[SFTP_MAX_MSG_LENGTH]; /* max SFTP packet size */
+static char buff_sink[SFTP_MAX_HANDLER_MSG_LENGTH]; /* max sink message size*/
 
 static void post_response_to_sink(u_int32_t id);
 
@@ -79,7 +79,8 @@ static void post_response_to_sink(u_int32_t id)
 	      return;
 	   }
 
-      len = sprintf(buff_sink, "id=%-10d resp=%-10s msg='%.*s'\n", id, resp_str, (int)mlen, resp_msg);
+      len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d resp=%-10s msg='%.*s'\n", id, resp_str, (int)mlen, resp_msg);
    }
    else if (resp_type == SSH2_FXP_HANDLE)
    {
@@ -95,7 +96,8 @@ static void post_response_to_sink(u_int32_t id)
 
 	   hptr = get_sftp_handle(resp_msg, mlen, -1);
 		if (hptr != NULL) {
-         len = sprintf(buff_sink, "id=%-10d resp=%-10s path='%s'\n", id, resp_str, hptr->name);
+         len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+               "id=%-10d resp=%-10s path='%s'\n", id, resp_str, hptr->name);
       } else {
 	      error("Encountered error in post_close_to_sink: bad handle");
          return;
@@ -108,7 +110,8 @@ static void post_response_to_sink(u_int32_t id)
 
       mlen = get_u32(resp_ptr + RESPONSE_OFFSET);
 
-      len = sprintf(buff_sink, "id=%-10d resp=%-10s len=%d\n", id, resp_str, mlen);
+      len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d resp=%-10s len=%d\n", id, resp_str, mlen);
    }
    else if (resp_type == SSH2_FXP_NAME)
    {
@@ -117,13 +120,15 @@ static void post_response_to_sink(u_int32_t id)
 
       mlen = get_u32(resp_ptr + RESPONSE_OFFSET);
 
-      len = sprintf(buff_sink, "id=%-10d resp=%-10s cnt=%d\n", id, resp_str, mlen);
+      len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d resp=%-10s cnt=%d\n", id, resp_str, mlen);
    }
    else if (resp_type == SSH2_FXP_ATTRS)
    {
       resp_type -= 100;
       resp_str = rsp_strings[resp_type];
-      len = sprintf(buff_sink, "id=%-10d resp=%-10s\n", id, resp_str);
+      len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d resp=%-10s\n", id, resp_str);
    }
    else
 	{

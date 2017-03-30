@@ -19,7 +19,7 @@
 
 extern struct sshbuf * iqueue;
 
-static char buff_sink[SFTP_MAX_MSG_LENGTH]; /* max SFTP packet size */
+static char buff_sink[SFTP_MAX_HANDLER_MSG_LENGTH]; /* max sink message size */
 
 static void post_open_to_sink(u_int32_t id);
 static void post_close_to_sink(u_int32_t id);
@@ -82,7 +82,8 @@ static void post_open_to_sink(u_int32_t id)
 
 	debug("Dispatch open name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "open", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH, 
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "open", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -110,7 +111,8 @@ static void post_close_to_sink(u_int32_t id)
 	if (hptr != NULL) {
 	   debug("Dispatch close of path \"%s\" to SFTP handler sink.", hptr->name);
 
-	   len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%s'\n", id, "close", hptr->name);
+	   len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d rqst=%-10s path='%s'\n", id, "close", hptr->name);
 	   rc = write_to_handler_sink(buff_sink, len);
 	   if (rc < 1)
 	   {
@@ -150,7 +152,8 @@ static void post_read_to_sink(u_int32_t id)
 	   /* establish read max size */
 	   max = get_u32(handle + len + sizeof(u_int64_t));
 
-	   len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%s' off=%lld max=%d\n", id, "read", hptr->name, (long long)off, (int)max);
+	   len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d rqst=%-10s path='%s' off=%lld max=%d\n", id, "read", hptr->name, (long long)off, (int)max);
 	   rc = write_to_handler_sink(buff_sink, len);
 	   if (rc < 1)
 	   {
@@ -191,7 +194,8 @@ static void post_write_to_sink(u_int32_t id)
 	   /* establish read max size */
 	   cnt = get_u32(handle + len + sizeof(u_int64_t));
 
-	   len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%s' off=%lld cnt=%d\n", id, "write", hptr->name, (long long)off, (int)cnt);
+	   len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH, 
+            "id=%-10d rqst=%-10s path='%s' off=%lld cnt=%d\n", id, "write", hptr->name, (long long)off, (int)cnt);
 	   rc = write_to_handler_sink(buff_sink, len);
 	   if (rc < 1)
 	   {
@@ -223,7 +227,8 @@ static void post_stat_to_sink(u_int32_t id)
 
 	debug("Dispatch stat name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "stat", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "stat", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -250,7 +255,8 @@ static void post_lstat_to_sink(u_int32_t id)
 
 	debug("Dispatch lstat name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "lstat", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH, 
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "lstat", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -282,7 +288,8 @@ static void post_fstat_to_sink(u_int32_t id)
 
 	   /* TO DO - parse and communicate file flags */
 
-	   len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%s'\n", id, "fstat", hptr->name);
+	   len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH, 
+            "id=%-10d rqst=%-10s path='%s'\n", id, "fstat", hptr->name);
 	   rc = write_to_handler_sink(buff_sink, len);
 	   if (rc < 1)
 	   {
@@ -313,7 +320,8 @@ static void post_setstat_to_sink(u_int32_t id)
 
 	/* TO DO - parse and communicate file attrs */
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "setstat", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "setstat", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -344,7 +352,8 @@ static void post_fsetstat_to_sink(u_int32_t id)
 	if (hptr != NULL) {
 		debug("Dispatch fsetstat name \"%s\" to SFTP handler sink.", hptr->name);
 
-	   len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%s'\n", id, "fsetstat", hptr->name);
+	   len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d rqst=%-10s path='%s'\n", id, "fsetstat", hptr->name);
 	   rc = write_to_handler_sink(buff_sink, len);
 	   if (rc < 1)
 	   {
@@ -373,7 +382,8 @@ static void post_opendir_to_sink(u_int32_t id)
 
 	debug("Dispatch opendir name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "opendir", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "opendir", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -403,7 +413,8 @@ static void post_readdir_to_sink(u_int32_t id)
 	if (hptr != NULL) {
 		debug("Dispatch readdir name \"%s\" to SFTP handler sink.", hptr->name);
 
-	   len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%s'\n", id, "readdir", hptr->name);
+	   len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+            "id=%-10d rqst=%-10s path='%s'\n", id, "readdir", hptr->name);
 	   rc = write_to_handler_sink(buff_sink, len);
 	   if (rc < 1)
 	   {
@@ -432,7 +443,8 @@ static void post_remove_to_sink(u_int32_t id)
 
 	debug("Dispatch remove name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "remove", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "remove", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -460,7 +472,8 @@ static void post_mkdir_to_sink(u_int32_t id)
 
 	/* TO DO - parse and communicate file attrs */
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "mkdir", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "mkdir", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -486,7 +499,8 @@ static void post_rmdir_to_sink(u_int32_t id)
 
 	debug("Dispatch rmdir name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "rmdir", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "rmdir", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -514,7 +528,8 @@ static void post_realpath_to_sink(u_int32_t id)
 
 	debug("Dispatch realpath name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "realpath", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "realpath", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -555,7 +570,8 @@ static void post_rename_to_sink(u_int32_t id)
 
 	debug("Dispatch rename from \"%.*s\" to \"%.*s\" to SFTP handler sink.", (int)len, path, (int)nlen, npath);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s' npath='%.*s'\n", id, "rename", (int)len, path, (int)nlen, npath);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s' npath='%.*s'\n", id, "rename", (int)len, path, (int)nlen, npath);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -581,7 +597,8 @@ static void post_readlink_to_sink(u_int32_t id)
 
 	debug("Dispatch readlink name \"%.*s\" to SFTP handler sink.", (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s'\n", id, "readlink", (int)len, path);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s'\n", id, "readlink", (int)len, path);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
@@ -622,7 +639,8 @@ static void post_symlink_to_sink(u_int32_t id)
 
 	debug("Dispatch symlink to \"%.*s\" from \"%.*s\" to SFTP handler sink.", (int)nlen, npath, (int)len, path);
 
-	len = sprintf(buff_sink, "id=%-10d rqst=%-10s path='%.*s' newpath='%.*s'\n", id, "symlink", (int)len, path, (int)nlen, npath);
+	len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
+         "id=%-10d rqst=%-10s path='%.*s' newpath='%.*s'\n", id, "symlink", (int)len, path, (int)nlen, npath);
 	rc = write_to_handler_sink(buff_sink, len);
 	if (rc < 1)
 	{
