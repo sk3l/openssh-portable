@@ -1,4 +1,6 @@
+#include "includes.h"
 
+#include "sftp-common.h"
 #include "sftp-handler.h"
 #include "sftp-handler-sink.h"
 #include "sftp-response-handler.h"
@@ -16,7 +18,7 @@
 
 extern struct sshbuf * oqueue;
 
-static char buff_fifo[34000]; /* max packet size from SFTP protocol */
+static char buff_fifo[SFTP_MAX_MSG_LENGTH]; /* max SFTP packet size */
 
 static void post_response_to_fifo(u_int32_t id);
 
