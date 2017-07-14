@@ -17,6 +17,7 @@
 #include "xmalloc.h"
 
 extern struct sshbuf * oqueue;
+extern struct passwd * pw_sftp;
 
 static char buff_sink[SFTP_MAX_HANDLER_MSG_LENGTH]; /* max sink message size*/
 
@@ -53,7 +54,7 @@ static void post_response_to_sink(u_int32_t id)
 	logit("Processing custom handler override SFTP response messages.");
 
    resp_ptr = sshbuf_ptr(oqueue);
-   
+
    len = get_u32(resp_ptr);
    if (len < 1)
    {
@@ -62,7 +63,7 @@ static void post_response_to_sink(u_int32_t id)
    }
 
    resp_type = *(resp_ptr + sizeof(u_int));
-      
+
    if (resp_type == SSH2_FX_OK)
    {
       resp_str = rsp_strings[0];
@@ -80,7 +81,8 @@ static void post_response_to_sink(u_int32_t id)
 	   }
 
       len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
-            "id=%-10d resp=%-10s msg='%.*s'\n", id, resp_str, (int)mlen, resp_msg);
+               "user=%-20s id=%-10d resp=%-10s msg='%.*s'\n",
+               pw_sftp->pw_name, id, resp_str, (int)mlen, resp_msg);
    }
    else if (resp_type == SSH2_FXP_HANDLE)
    {
@@ -97,7 +99,8 @@ static void post_response_to_sink(u_int32_t id)
 	   hptr = get_sftp_handle(resp_msg, mlen, -1);
 		if (hptr != NULL) {
          len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
-               "id=%-10d resp=%-10s path='%s'\n", id, resp_str, hptr->name);
+                  "user=%-20s id=%-10d resp=%-10s path='%s'\n",
+                  pw_sftp->pw_name, id, resp_str, hptr->name);
       } else {
 	      error("Encountered error in post_close_to_sink: bad handle");
          return;
@@ -111,7 +114,8 @@ static void post_response_to_sink(u_int32_t id)
       mlen = get_u32(resp_ptr + RESPONSE_OFFSET);
 
       len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
-            "id=%-10d resp=%-10s len=%d\n", id, resp_str, mlen);
+               "user=%-20s id=%-10d resp=%-10s len=%d\n",
+               pw_sftp->pw_name, id, resp_str, mlen);
    }
    else if (resp_type == SSH2_FXP_NAME)
    {
@@ -121,14 +125,16 @@ static void post_response_to_sink(u_int32_t id)
       mlen = get_u32(resp_ptr + RESPONSE_OFFSET);
 
       len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
-            "id=%-10d resp=%-10s cnt=%d\n", id, resp_str, mlen);
+               "user=%-20s id=%-10d resp=%-10s cnt=%d\n",
+               pw_sftp->pw_name, id, resp_str, mlen);
    }
    else if (resp_type == SSH2_FXP_ATTRS)
    {
       resp_type -= 100;
       resp_str = rsp_strings[resp_type];
       len = snprintf(buff_sink, SFTP_MAX_HANDLER_MSG_LENGTH,
-            "id=%-10d resp=%-10s\n", id, resp_str);
+               "user=%-20s id=%-10d resp=%-10s\n",
+               pw_sftp->pw_name, id, resp_str);
    }
    else
 	{

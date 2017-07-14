@@ -1534,7 +1534,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 
 #ifdef HAVE_HANDLER_OVERRIDES
 	/* Initialize application overrides over the SFTP handlers table. */
-	init_handler_overrides(handler_table);
+	init_handler_overrides(handler_table, pw);
 #endif
 
 	while (!skipargs && (ch = getopt(argc, argv,

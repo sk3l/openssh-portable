@@ -42,7 +42,7 @@ typedef handler_ptr *         handler_list;
 handler_ptr alloc_handler(
    const char * name, const char * extname, int type, handler_fnc, int writable);
 
-int init_handler_overrides(handler_list * handlers);
+int init_handler_overrides(handler_list * handlers, struct passwd * pw);
 
 int get_ssh_string(const char * buf, const u_char ** str, u_int * len);
 

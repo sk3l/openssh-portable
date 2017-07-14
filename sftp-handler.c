@@ -16,7 +16,9 @@ extern u_int num_handles;
 extern struct sftp_handler req_overrides[];
 extern struct sftp_handler rsp_overrides[];
 
-int init_handler_overrides(handler_list * htbl)
+struct passwd * pw_sftp;
+
+int init_handler_overrides(handler_list * htbl, struct passwd * pw)
 {
 	u_int i;
 	handler_list   hlist = NULL,
@@ -45,6 +47,9 @@ int init_handler_overrides(handler_list * htbl)
 	   htbl[i] = new_hlist;
 	   free(hlist);
 	}
+
+   pw_sftp = pw;
+
 	return 1;
 }
 
