@@ -28,6 +28,15 @@ static enum PLUGIN_SEQUENCE plugin_sequence_str_to_enum(const char * sequence)
    return ps;
 }
 
+static void skip_space(char ** pstr, int len)
+{
+   while ((len > 0) && isspace(**pstr))
+   {
+      --len;
+      (*pstr)++;
+   }
+}
+
 // Read & parse the SFTP plugin conf
 static int load_plugin_conf()
 {
@@ -48,9 +57,7 @@ static int load_plugin_conf()
       lpos = line;
 
       // Skip whitespace
-      for (i = 0; i < linesize; ++i)
-         if (!isspace(*lpos++))
-               break;
+      skip_space(&lpos, linesize);
 
       // Skip empty lines, comment lines
       if ((i == linesize) || (*lpos == '#'))
