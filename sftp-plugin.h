@@ -10,9 +10,10 @@
 
 // Order of invocation of plugin, relative to main SFTP handlers
 enum PLUGIN_SEQUENCE {
-   PLUGIN_SEQ_BEFORE = 0,
-   PLUGIN_SEQ_INSTEAD= 1,
-   PLUGIN_SEQ_AFTER  = 2
+   PLUGIN_SEQ_UNKNOWN= 0,
+   PLUGIN_SEQ_BEFORE = 1,
+   PLUGIN_SEQ_INSTEAD= 2,
+   PLUGIN_SEQ_AFTER  = 3
 };   
 
 typedef struct Plugin Plugin;
