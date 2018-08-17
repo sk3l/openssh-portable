@@ -69,10 +69,11 @@ static int skip_u_chartype(u_char ** puchar, int len, ctype_func cf)
 static int load_plugin_conf()
 {
    char * line = NULL, * lpos;
-   size_t linesize = 0, linecnt = 0;
+   size_t linecnt = 0, linesize = 0, linelen = 0;
    int len, rc;
    FILE * fconf;
 
+   printf("Attempting to open SFTP pluing conf '%s'\n", SFTP_PLUGIN_CONF);
    if ((fconf = fopen(SFTP_PLUGIN_CONF, "r")) == NULL)
    {
       perror(SFTP_PLUGIN_CONF);
@@ -83,19 +84,20 @@ static int load_plugin_conf()
    {
       ++linecnt;
       lpos = line;
+      linelen = strlen(line);
 
-      len = skip_chartype(&lpos, linesize, isspace);
+      len = skip_chartype(&lpos, linelen, isspace);
 
-      if ((len == linesize) || (*lpos == '#'))
+      if ((len == linelen) || (*lpos == '#'))
          continue;
 
       // Stash the line in our buffer
-      if ((rc = sshbuf_put(fbuf, lpos, linesize-len)) != 0)
+      if ((rc = sshbuf_put(fbuf, lpos, linelen-len)) != 0)
 			fatal("%s: buffer error", __func__);
 
       // If a partial last line is encountered, add a line feed
       // (simplifies parsing logic to assume every entry is \n terminated)
-      if (line[linesize-1] != '\n')
+      if (line[linelen-1] != '\n')
          if ((rc = sshbuf_put_u8(fbuf, '\n')) != 0)
 	        fatal("%s: buffer error", __func__);
 
