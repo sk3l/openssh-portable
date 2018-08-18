@@ -1,0 +1,22 @@
+# Example SFTP plugin conf
+# Comment followed by empty line
+
+# Comment followed by whitespace line
+    
+# Comment followed by plugin name only
+foobam
+
+# Comment followed by plugin name with trailing space 
+fooban  
+
+# Comment followed by plugin name with sequence 
+foobar AFTER
+
+# Comment followed by plugin name with sequence
+foobas BEFORE 
+
+# Comment followed by plugin name with sequence and space 
+foobat AFTER  
+
+# Comment followed by EOF 
+foobaz

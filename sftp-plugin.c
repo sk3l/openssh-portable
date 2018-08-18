@@ -50,7 +50,7 @@ static int skip_chartype(char ** pchar, int len, ctype_func cf)
        (*pchar)++;
    }
 
-   return (len - i);
+   return i;
 }
 
 static int skip_u_chartype(u_char ** puchar, int len, ctype_func cf)
@@ -62,7 +62,7 @@ static int skip_u_chartype(u_char ** puchar, int len, ctype_func cf)
        (*puchar)++;
    }
 
-   return (len - i);
+   return i;
 }
 
 // Read & parse the SFTP plugin conf
@@ -82,7 +82,6 @@ static int load_plugin_conf()
 
    while (getline(&line, &linesize, fconf) != -1)
    {
-      ++linecnt;
       lpos = line;
       linelen = strlen(line);
 
@@ -91,6 +90,7 @@ static int load_plugin_conf()
       if ((len == linelen) || (*lpos == '#'))
          continue;
 
+      ++linecnt;
       // Stash the line in our buffer
       if ((rc = sshbuf_put(fbuf, lpos, linelen-len)) != 0)
 			fatal("%s: buffer error", __func__);
@@ -117,7 +117,7 @@ static void init_plugins(int count)
    u_int buflen;
    u_char * pluginbeg, * pluginend;
    u_char delim;
-   int pos = 0, pluginidx = 0;
+   int pos = 0, pluginidx = 0, blankcnt = 0;
    Plugin * pplugin = NULL;
 
    // Allocate a Plugin per conf line
@@ -129,7 +129,7 @@ static void init_plugins(int count)
    // Scan through conf data in sshbuf, initializing Plugins
    while (pos < buflen)
    {
-      pplugin = &plugins[pluginidx];
+      pplugin = &plugins[pluginidx++];
 
       pos += skip_u_chartype(&pluginend, buflen-pos, isalnum);
 
@@ -143,14 +143,20 @@ static void init_plugins(int count)
       *pluginend = 0;
       pplugin->name_ = xstrdup(pluginbeg);
 
+      pluginbeg = ++pluginend;
+      ++pos;
+
       if (delim == '\n')
           continue;
 
-      pluginbeg = ++pluginend;
       pos += skip_u_chartype(&pluginend, buflen-pos, isblank);
 
       if (*pluginend == '\n')
+      {
+          pluginbeg = ++pluginend;
+          ++pos;
           continue;
+      }
 
       // Read plugin sequence
       pos += skip_u_chartype(&pluginend, buflen-pos, isalnum);
@@ -160,13 +166,25 @@ static void init_plugins(int count)
       if (!isspace(*pluginend))
          fatal("%s: invalid char in plugin sequence", __func__);
 
-      pplugin->sequence_ = plugin_sequence_str_to_enum(pluginbeg, pluginend-pluginbeg);
+      delim = *pluginend;
+      *pluginend = 0;
 
+      // Read plugin sequence name
+      pplugin->sequence_ = plugin_sequence_str_to_enum(pluginbeg, pluginend-pluginbeg);
       if (pplugin->sequence_ == PLUGIN_SEQ_UNKNOWN)
          fatal("%s: invalid sequence string in plugin conf", __func__);
 
-      pos += skip_u_chartype(&pluginend, buflen-pos, isblank);
       pluginbeg = ++pluginend;
+      ++pos;
+
+      if (delim == '\n')
+          continue;
+
+      // Skip trailing space after sequence
+      pos += skip_u_chartype(&pluginend, buflen-pos, isblank);
+
+      pluginbeg = ++pluginend;
+      ++pos;
    }
 }
 
