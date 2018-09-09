@@ -21,7 +21,7 @@ struct Plugin {
    void * so_handle_;
    char * name_;
    enum PLUGIN_SEQUENCE sequence_;
-   callback_ptr callbacks[MAX_CALLBACK_IDX];
+   callbacks_ptr callbacks_;
 };
 
 // Initialize the list of SFTP plugins

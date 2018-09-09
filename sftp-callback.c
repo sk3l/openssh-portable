@@ -1,8 +1,9 @@
 
+#include "sftp.h"
 #include "sftp-callback.h"
 
 #include "xmalloc.h"
-
+/*
 callback_ptr create_sftp_callback(const char * name, int type, sftp_callback_func cbkfunc)
 {
    callback_ptr pcbk = NULL;
@@ -33,3 +34,4 @@ void destroy_sftp_callback(callback_ptr pcbk)
       free(pcbk);
    }
 }
+*/
