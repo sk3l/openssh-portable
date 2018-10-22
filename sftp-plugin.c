@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <dlfcn.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 static struct sshbuf * fbuf;
 
 static Plugin * plugins;
+static size_t plugins_cnt;
 
 const char * PLUGIN_SEQUENCE_STR [] = {
    "UNKNOWN",
@@ -112,7 +114,7 @@ static int load_plugin_conf()
 // Scan the config buffer, initializing the plugin list
 // Pattern of the plugin conf should be:
 // <pluginname>[<whitespace>+][<sequence>]\n
-static void init_plugins(int count)
+static void init_plugins()
 {
    u_int buflen;
    u_char * pluginbeg, * pluginend;
@@ -121,7 +123,7 @@ static void init_plugins(int count)
    Plugin * pplugin = NULL;
 
    // Allocate a Plugin per conf line
-   plugins = (Plugin*) xcalloc(sizeof(Plugin), count);
+   plugins = (Plugin*) xcalloc(sizeof(Plugin), plugins_cnt);
 
    buflen    = sshbuf_len(fbuf);
    pluginbeg = pluginend = sshbuf_mutable_ptr(fbuf);
@@ -189,23 +191,45 @@ static void init_plugins(int count)
 }
 
 // Open & scan the shared objects for the plugins
-static void load_plugin_so()
+static int load_plugins_so()
 {
+   // For each plugin, load the referenced .so
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
 
+      pplugin->so_handle_ = dlopen(pplugin->name_, RTLD_NOW);
+      if (pplugin->so_handle_ == NULL)
+          return -1;
+
+      // For each callback type, look up the matching symbol
+      for (enum SFTP_CALLBACK_FUNC cf = CBACK_FUNC_OPEN_FILE;
+              cf != CBACK_FUNC_SENTRY;
+              ++cf)
+      {
+          sftp_cbk_func pfunc = dlsym(pplugin->so_handle_, pplugin->name_);
+          if (pfunc != 0)
+              return -1;
+
+          if (set_sftp_callback_func(&pplugin->callbacks_, cf, pfunc) != 0)
+              return -1;
+      }
+   }
+
+   return 0;
 }
 
 int sftp_plugins_init()
 {
-   int count;
-
    if ((fbuf = sshbuf_new()) == NULL)
 		fatal("%s: sshbuf_new failed", __func__);
 
-   count = load_plugin_conf();
+   plugins_cnt = load_plugin_conf();
 
-   init_plugins(count);
+   init_plugins();
 
-   load_plugin_so();
+   if(load_plugins_so() != 0)
+		fatal("%s: load_plugin_so failed", __func__);
 
    return 0;
 }
@@ -213,6 +237,15 @@ int sftp_plugins_init()
 int sftp_plugins_release()
 {
    sshbuf_free(fbuf);
+
+   // For each plugin, unload the referenced .so
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      if (dlclose(plugins[i].so_handle_) != 0)
+	     fatal("%s: dlclose failed for .so %s", __func__, plugins[i].name_);
+
+      free(plugins[i].name_);
+   }
 
    free(plugins);
 

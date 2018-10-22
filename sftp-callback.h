@@ -85,9 +85,11 @@ enum SFTP_CALLBACK_FUNC {
     CBACK_FUNC_HANDLE,
     CBACK_FUNC_DATA,
     CBACK_FUNC_NAME,
-    CBACK_FUNC_ATTRS   
+    CBACK_FUNC_ATTRS,
+    CBACK_FUNC_SENTRY   /* LAST CALLBACK enum*/
 };
 
+// Given SFTP callback function enum, return name of callback symbol name
 const char * get_sftp_callback_sym(enum SFTP_CALLBACK_FUNC scf);
 
 int set_sftp_callback_func(callbacks_ptr cp, enum SFTP_CALLBACK_FUNC scf, sftp_cbk_func f);
