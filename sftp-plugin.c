@@ -208,8 +208,8 @@ static int load_plugins_so()
               ++cf)
       {
           sftp_cbk_func pfunc = dlsym(pplugin->so_handle_, pplugin->name_);
-          if (pfunc != 0)
-              return -1;
+          if (pfunc == NULL)
+              continue;     // TO DO - call dlerror()
 
           if (set_sftp_callback_func(&pplugin->callbacks_, cf, pfunc) != 0)
               return -1;
