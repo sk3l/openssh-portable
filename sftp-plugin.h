@@ -33,6 +33,24 @@ int sftp_plugins_release();
 // Return an array of SFTP plugins
 int get_plugins(Plugin ** plugins, int * cnt);
 
-int call_open_file_cbks(uint32_t, const char *, uint32_t, uint32_t, uint32_t, enum PLUGIN_SEQUENCE);
+int call_open_file_plugins(uint32_t, const char *, uint32_t, uint32_t, uint32_t, enum PLUGIN_SEQUENCE);
+int call_open_dir_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
+int call_close_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
+int call_read_plugins(uint32_t, const char *, uint64_t, uint32_t, enum PLUGIN_SEQUENCE);
+int call_read_dir_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
+int call_write_plugins(uint32_t, const char *, uint64_t, const char *, enum PLUGIN_SEQUENCE);
+int call_remove_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
+int call_rename_plugins(uint32_t, const char *, const char *, uint32_t, enum PLUGIN_SEQUENCE);
+int call_mkdir_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
+int call_rmdir_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
+int call_stat_plugins(uint32_t, const char *, uint32_t, enum PLUGIN_SEQUENCE);
+int call_lstat_plugins(uint32_t, const char *, uint32_t, enum PLUGIN_SEQUENCE);
+int call_fstat_plugins(uint32_t, const char *, uint32_t, enum PLUGIN_SEQUENCE);
+int call_setstat_plugins(uint32_t, const char *, uint32_t, enum PLUGIN_SEQUENCE);
+int call_fsetstat_plugins(uint32_t, const char *, uint32_t, enum PLUGIN_SEQUENCE);
+int call_link_plugins(uint32_t, const char *, const char *, int, enum PLUGIN_SEQUENCE);
+int call_lock_plugins(uint32_t, const char *, uint64_t, uint64_t,int, enum PLUGIN_SEQUENCE);
+int call_unlock_plugins(uint32_t, const char *, uint64_t, uint64_t, enum PLUGIN_SEQUENCE);
+int call_realpath_plugins(uint32_t, const char *, uint8_t, const char *, enum PLUGIN_SEQUENCE);
 
 #endif

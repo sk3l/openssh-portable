@@ -1,3 +1,5 @@
+#include "includes.h"
+
 #include <ctype.h>
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -43,9 +45,9 @@ static enum PLUGIN_SEQUENCE plugin_sequence_str_to_enum(const char * sequence, i
 // traverse through the string while predicate matches and len isn't reached.
 // Return number of characters traversed.
 typedef int (*ctype_func)(int c);
-static int skip_chartype(char ** pchar, int len, ctype_func cf)
+static size_t skip_chartype(char ** pchar, size_t len, ctype_func cf)
 {
-   int i = 0;
+   size_t i = 0;
    while ((i < len) && cf(**pchar))
    {
        ++i;
@@ -55,9 +57,9 @@ static int skip_chartype(char ** pchar, int len, ctype_func cf)
    return i;
 }
 
-static int skip_u_chartype(u_char ** puchar, int len, ctype_func cf)
+static size_t skip_u_chartype(u_char ** puchar, size_t len, ctype_func cf)
 {
-   int i = 0;
+   size_t i = 0;
    while ((i < len) && cf(**puchar))
    {
        ++i;
@@ -72,7 +74,7 @@ static int load_plugin_conf()
 {
    char * line = NULL, * lpos;
    size_t linecnt = 0, linesize = 0, linelen = 0;
-   int len, rc;
+   size_t len, rc;
    FILE * fconf;
 
    printf("Attempting to open SFTP pluing conf '%s'\n", SFTP_PLUGIN_CONF);
@@ -119,7 +121,9 @@ static void init_plugins()
    u_int buflen;
    u_char * pluginbeg, * pluginend;
    u_char delim;
-   int pos = 0, pluginidx = 0, blankcnt = 0;
+   size_t pos = 0;
+   //int pos = 0, pluginidx = 0, blankcnt = 0;
+   int pluginidx = 0;
    Plugin * pplugin = NULL;
 
    // Allocate a Plugin per conf line
@@ -229,7 +233,7 @@ int sftp_plugins_init()
    init_plugins();
 
    if(load_plugins_so() != 0)
-		fatal("%s: load_plugin_so failed", __func__);
+   		fatal("%s: load_plugin_so failed", __func__);
 
    return 0;
 }
@@ -256,3 +260,165 @@ int get_plugins(Plugin ** plugins, int * cnt)
 {
    return 0;
 }
+
+/* SFTP plugin invocation methods
+ * Call the chain of plugin methods for a given SFTP protocol event,
+ * using the specified plugin sequence type (before, instead or after)
+ */
+int call_open_file_plugins(uint32_t rqstid,
+        const char * filename,
+        uint32_t access,
+        uint32_t flags,
+        uint32_t attrs,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_open_dir_plugins(uint32_t rqstid,
+        const char * dirpath,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_close_plugins(uint32_t rqstid,
+        const char * handle,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 1;
+}
+
+int call_read_plugins(uint32_t rqstid,
+        const char * handel,
+        uint64_t offset,
+        uint32_t length,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_read_dir_plugins(uint32_t rqstid,
+        const char * handle,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_write_plugins(uint32_t rqstid,
+        const char * handle,
+        uint64_t offset,
+        const char * data,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_remove_plugins(uint32_t rqstid,
+        const char * filename,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_rename_plugins(uint32_t rqstid,
+        const char * oldfilename,
+        const char * newfilename,
+        uint32_t flags,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_mkdir_plugins(uint32_t rqstid,
+        const char * path,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_rmdir_plugins(uint32_t rqstid,
+        const char * path,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_stat_plugins(uint32_t rqstid,
+        const char * path,
+        uint32_t flags,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_lstat_plugins(uint32_t rqstid,
+        const char * path,
+        uint32_t flags,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_fstat_plugins(uint32_t rqstid,
+        const char * handle,
+        uint32_t flags,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_setstat_plugins(uint32_t rqstid,
+        const char * path,
+        uint32_t attrs,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_fsetstat_plugins(uint32_t rqstid,
+        const char * handle,
+        uint32_t attrs,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_link_plugins(uint32_t rqstid,
+        const char * newlink,
+        const char * curlink,
+        int symlink,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_lock_plugins(uint32_t rqstid,
+        const char * handle,
+        uint64_t offset,
+        uint64_t length,
+        int lockmask,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_unlock_plugins(uint32_t rqstid,
+        const char * handle,
+        uint64_t offset,
+        uint64_t length,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+int call_realpath_plugins(uint32_t rqstid,
+        const char * origpath,
+        uint8_t ctlbyte,
+        const char * path,
+        enum PLUGIN_SEQUENCE seq)
+{
+    return 0;
+}
+
+
