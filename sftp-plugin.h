@@ -33,6 +33,7 @@ int sftp_plugins_release();
 // Return an array of SFTP plugins
 int get_plugins(Plugin ** plugins, int * cnt);
 
+// Methods for invocation of SFTP plugin methods
 int call_open_file_plugins(uint32_t, const char *, uint32_t, uint32_t, uint32_t, enum PLUGIN_SEQUENCE);
 int call_open_dir_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);
 int call_close_plugins(uint32_t, const char *, enum PLUGIN_SEQUENCE);

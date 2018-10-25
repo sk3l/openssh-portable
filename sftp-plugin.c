@@ -15,7 +15,6 @@
 
 #define SFTP_PLUGIN_CONF SSHDIR "/sftp_plugin_conf"
 
-static struct sshbuf * fbuf;
 
 static Plugin * plugins;
 static size_t plugins_cnt;
@@ -70,15 +69,15 @@ static size_t skip_u_chartype(u_char ** puchar, size_t len, ctype_func cf)
 }
 
 // Read & parse the SFTP plugin conf
-static int load_plugin_conf()
+static int load_plugin_conf(const char * confpath, struct sshbuf * fbuf)
 {
    char * line = NULL, * lpos;
    size_t linecnt = 0, linesize = 0, linelen = 0;
    size_t len, rc;
    FILE * fconf;
 
-   printf("Attempting to open SFTP pluing conf '%s'\n", SFTP_PLUGIN_CONF);
-   if ((fconf = fopen(SFTP_PLUGIN_CONF, "r")) == NULL)
+   printf("Attempting to open SFTP pluing conf '%s'\n", confpath);
+   if ((fconf = fopen(confpath, "r")) == NULL)
    {
       perror(SFTP_PLUGIN_CONF);
       exit(1);
@@ -116,7 +115,7 @@ static int load_plugin_conf()
 // Scan the config buffer, initializing the plugin list
 // Pattern of the plugin conf should be:
 // <pluginname>[<whitespace>+][<sequence>]\n
-static void init_plugins()
+static void init_plugins(struct sshbuf * fbuf)
 {
    u_int buflen;
    u_char * pluginbeg, * pluginend;
@@ -225,23 +224,24 @@ static int load_plugins_so()
 
 int sftp_plugins_init()
 {
+   struct sshbuf * fbuf;
    if ((fbuf = sshbuf_new()) == NULL)
 		fatal("%s: sshbuf_new failed", __func__);
 
-   plugins_cnt = load_plugin_conf();
+   plugins_cnt = load_plugin_conf(SFTP_PLUGIN_CONF, fbuf);
 
-   init_plugins();
+   init_plugins(fbuf);
 
    if(load_plugins_so() != 0)
    		fatal("%s: load_plugin_so failed", __func__);
+   
+   sshbuf_free(fbuf);
 
    return 0;
 }
 
 int sftp_plugins_release()
 {
-   sshbuf_free(fbuf);
-
    // For each plugin, unload the referenced .so
    for (size_t i = 0; i < plugins_cnt; ++i)
    {
