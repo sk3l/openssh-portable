@@ -28,25 +28,11 @@ int main(int argc, char ** argv)
 
    sshbuf_free(fbuf);
 
+   if (call_open_dir_plugins(1, "/test/path", PLUGIN_SEQ_BEFORE) != 0)
+      ++failures; 
+
    sftp_plugins_release();
 
-/*
-   printf("Calling sftp_plugins_init()\n");
-
-   if (sftp_plugins_init() != 0)
-   {
-      printf("sftp_plugins_init() failed.\n");
-      failures = 1;
-   }
-
-   printf("Calling sftp_plugins_release()\n");
-
-   if (sftp_plugins_release() != 0)
-   {
-      printf("sftp_plugins_release() failed.\n");
-      failures = 1;
-   }
-*/
    if (!failures)
    {
       printf("All tests passed\n");

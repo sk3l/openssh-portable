@@ -1,4 +1,3 @@
 # Example SFTP plugin conf
 
-test_client_plugin
-
+test_client_plugin BEFORE
