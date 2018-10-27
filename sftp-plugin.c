@@ -349,23 +349,53 @@ int call_close_plugins(uint32_t rqstid,
         const char * handle,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 1;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_close != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_close(rqstid, handle);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_read_plugins(uint32_t rqstid,
-        const char * handel,
+        const char * handle,
         uint64_t offset,
         uint32_t length,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_read != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_read(rqstid, handle, offset, length);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_read_dir_plugins(uint32_t rqstid,
         const char * handle,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_read_dir != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_read_dir(rqstid, handle);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_write_plugins(uint32_t rqstid,
@@ -374,14 +404,34 @@ int call_write_plugins(uint32_t rqstid,
         const char * data,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_write != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_write(rqstid, handle, offset, data);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_remove_plugins(uint32_t rqstid,
         const char * filename,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_remove != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_remove(rqstid, filename);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_rename_plugins(uint32_t rqstid,
@@ -390,21 +440,51 @@ int call_rename_plugins(uint32_t rqstid,
         uint32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_rename != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_rename(rqstid, oldfilename, newfilename, flags);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_mkdir_plugins(uint32_t rqstid,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_mkdir != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_mkdir(rqstid, path);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_rmdir_plugins(uint32_t rqstid,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_rmdir != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_rmdir(rqstid, path);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_stat_plugins(uint32_t rqstid,
@@ -412,7 +492,17 @@ int call_stat_plugins(uint32_t rqstid,
         uint32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_stat != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_stat(rqstid, path, flags);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_lstat_plugins(uint32_t rqstid,
@@ -420,7 +510,17 @@ int call_lstat_plugins(uint32_t rqstid,
         uint32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_lstat != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_lstat(rqstid, path, flags);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_fstat_plugins(uint32_t rqstid,
@@ -428,7 +528,17 @@ int call_fstat_plugins(uint32_t rqstid,
         uint32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_fstat != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_fstat(rqstid, handle, flags);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_setstat_plugins(uint32_t rqstid,
@@ -436,7 +546,17 @@ int call_setstat_plugins(uint32_t rqstid,
         uint32_t attrs,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_setstat != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_setstat(rqstid, path, attrs);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_fsetstat_plugins(uint32_t rqstid,
@@ -444,7 +564,17 @@ int call_fsetstat_plugins(uint32_t rqstid,
         uint32_t attrs,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_fsetstat != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_fsetstat(rqstid, handle, attrs);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_link_plugins(uint32_t rqstid,
@@ -453,7 +583,17 @@ int call_link_plugins(uint32_t rqstid,
         int symlink,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_link != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_link(rqstid, newlink, curlink, symlink);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_lock_plugins(uint32_t rqstid,
@@ -463,7 +603,17 @@ int call_lock_plugins(uint32_t rqstid,
         int lockmask,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_lock != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_lock(rqstid, handle, offset, length, lockmask);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_unlock_plugins(uint32_t rqstid,
@@ -472,7 +622,17 @@ int call_unlock_plugins(uint32_t rqstid,
         uint64_t length,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_unlock != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_unlock(rqstid, handle, offset, length);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_realpath_plugins(uint32_t rqstid,
@@ -481,7 +641,17 @@ int call_realpath_plugins(uint32_t rqstid,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_realpath != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_realpath(rqstid, origpath, ctlbyte, path);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 
