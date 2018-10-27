@@ -40,10 +40,17 @@ static enum PLUGIN_SEQUENCE plugin_sequence_str_to_enum(const char * sequence, i
    return PLUGIN_SEQ_UNKNOWN;
 }
 
+typedef int (*ctype_func)(int c);
+
+static int isvariablechar(int c)
+{
+    return (c == '_') || isalnum(c);
+}
+
 // Given a C string and character (and u_char) predicate function,
 // traverse through the string while predicate matches and len isn't reached.
 // Return number of characters traversed.
-typedef int (*ctype_func)(int c);
+
 static size_t skip_chartype(char ** pchar, size_t len, ctype_func cf)
 {
    size_t i = 0;
@@ -136,7 +143,7 @@ static void init_plugins(struct sshbuf * fbuf)
    {
       pplugin = &plugins[pluginidx++];
 
-      pos += skip_u_chartype(&pluginend, buflen-pos, isalnum);
+      pos += skip_u_chartype(&pluginend, buflen-pos, isvariablechar);
 
       // Verify next u_char is whitespace
       // Otherwise, bail on parsing (invalid char)
@@ -164,7 +171,7 @@ static void init_plugins(struct sshbuf * fbuf)
       }
 
       // Read plugin sequence
-      pos += skip_u_chartype(&pluginend, buflen-pos, isalnum);
+      pos += skip_u_chartype(&pluginend, buflen-pos, isvariablechar);
 
       // Verify next u_char is whitespace
       // Otherwise, bail on parsing (invalid char)
@@ -193,6 +200,35 @@ static void init_plugins(struct sshbuf * fbuf)
    }
 }
 
+char * make_soname(const char * libname)
+{
+    char * soname = NULL;
+    const char * prefix = "lib";
+    const char * suffix = ".so";
+
+    size_t solen = 0;
+    size_t llen  = strlen(libname);
+    size_t plen  = strlen(prefix);
+    size_t slen  = strlen(suffix);
+
+    if (llen < 1)
+        return NULL;
+
+    // Allocate space for soname prefix and suffix
+    // i.e. "lib" + libname + ".so" + '\0'
+    solen = plen  + llen + slen + 1;
+
+    soname = xmalloc(solen);
+    if (soname != NULL)
+    {
+        strcpy(soname, prefix);
+        strcpy(soname+plen, libname);
+        strcpy(soname+plen+llen, suffix);
+        soname[solen-1] = 0;
+    }
+    return soname;
+}
+
 // Open & scan the shared objects for the plugins
 static int load_plugins_so()
 {
@@ -200,18 +236,35 @@ static int load_plugins_so()
    for (size_t i = 0; i < plugins_cnt; ++i)
    {
       Plugin * pplugin = &plugins[i];
+      const char * symstr = NULL;
+      char * dlerrstr = NULL;
 
-      pplugin->so_handle_ = dlopen(pplugin->name_, RTLD_NOW);
-      if (pplugin->so_handle_ == NULL)
+      char * soname = make_soname(pplugin->name_);
+      if (soname == NULL)
+          fatal("%s: error while converting lib name '%s' to soname",
+                  __func__, pplugin->name_);
+
+      dlerror();
+      pplugin->so_handle_ = dlopen(soname, RTLD_NOW);
+      dlerrstr  = dlerror();
+      if (dlerrstr != NULL)
           return -1;
+
+      free(soname);
 
       // For each callback type, look up the matching symbol
       for (enum SFTP_CALLBACK_FUNC cf = CBACK_FUNC_OPEN_FILE;
               cf != CBACK_FUNC_SENTRY;
               ++cf)
       {
-          sftp_cbk_func pfunc = dlsym(pplugin->so_handle_, pplugin->name_);
-          if (pfunc == NULL)
+          symstr = get_sftp_callback_sym(cf);
+          if (symstr == NULL)
+              return -1;
+
+          dlerror();
+          sftp_cbk_func pfunc = dlsym(pplugin->so_handle_, symstr);
+          dlerrstr = dlerror();
+          if (dlerrstr != NULL)
               continue;     // TO DO - call dlerror()
 
           if (set_sftp_callback_func(&pplugin->callbacks_, cf, pfunc) != 0)
@@ -234,7 +287,7 @@ int sftp_plugins_init()
 
    if(load_plugins_so() != 0)
    		fatal("%s: load_plugin_so failed", __func__);
-   
+
    sshbuf_free(fbuf);
 
    return 0;
@@ -279,7 +332,17 @@ int call_open_dir_plugins(uint32_t rqstid,
         const char * dirpath,
         enum PLUGIN_SEQUENCE seq)
 {
-    return 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_open_dir != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_open_dir(rqstid, dirpath);
+         if (rc != 0)
+             return rc;
+      }
+   }
+   return 0;
 }
 
 int call_close_plugins(uint32_t rqstid,
