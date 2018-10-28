@@ -21,6 +21,7 @@ static const char * SFTP_CALLBACK_SYM [] = {
     "sftp_cf_fstat",
     "sftp_cf_setstat",
     "sftp_cf_fsetstat",
+    "sftp_cf_read_link",
     "sftp_cf_link",
     "sftp_cf_lock",
     "sftp_cf_unlock",
@@ -90,7 +91,10 @@ int set_sftp_callback_func(callbacks_ptr cp, enum SFTP_CALLBACK_FUNC scf, sftp_c
         case CBACK_FUNC_FSETSTAT:
             cp->cf_fsetstat = (sftp_cbk_fsetstat) f;
         break;
-        case CBACK_FUNC_LINK:
+        case CBACK_FUNC_READ_LINK:
+            cp->cf_read_link = (sftp_cbk_read_link) f;
+        break;
+         case CBACK_FUNC_LINK:
             cp->cf_link = (sftp_cbk_link) f;
         break;
         case CBACK_FUNC_LOCK:

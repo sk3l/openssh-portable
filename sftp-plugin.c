@@ -324,7 +324,7 @@ int call_open_file_plugins(uint32_t rqstid,
         const char * filename,
         uint32_t access,
         uint32_t flags,
-        uint32_t attrs,
+        attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -362,7 +362,7 @@ int call_open_dir_plugins(uint32_t rqstid,
 }
 
 int call_close_plugins(uint32_t rqstid,
-        const char * handle,
+        int handle,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -381,7 +381,7 @@ int call_close_plugins(uint32_t rqstid,
 }
 
 int call_read_plugins(uint32_t rqstid,
-        const char * handle,
+        int handle,
         uint64_t offset,
         uint32_t length,
         enum PLUGIN_SEQUENCE seq)
@@ -402,7 +402,7 @@ int call_read_plugins(uint32_t rqstid,
 }
 
 int call_read_dir_plugins(uint32_t rqstid,
-        const char * handle,
+        int handle,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -421,7 +421,7 @@ int call_read_dir_plugins(uint32_t rqstid,
 }
 
 int call_write_plugins(uint32_t rqstid,
-        const char * handle,
+        int handle,
         uint64_t offset,
         const char * data,
         enum PLUGIN_SEQUENCE seq)
@@ -560,7 +560,7 @@ int call_lstat_plugins(uint32_t rqstid,
 }
 
 int call_fstat_plugins(uint32_t rqstid,
-        const char * handle,
+        int handle,
         uint32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -581,7 +581,7 @@ int call_fstat_plugins(uint32_t rqstid,
 
 int call_setstat_plugins(uint32_t rqstid,
         const char * path,
-        uint32_t attrs,
+        attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -600,8 +600,8 @@ int call_setstat_plugins(uint32_t rqstid,
 }
 
 int call_fsetstat_plugins(uint32_t rqstid,
-        const char * handle,
-        uint32_t attrs,
+        int handle,
+        attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -611,6 +611,25 @@ int call_fsetstat_plugins(uint32_t rqstid,
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_fsetstat != NULL)
       {
          int rc = pplugin->callbacks_.cf_fsetstat(rqstid, handle, attrs);
+         if (rc != 0)
+             return -rc;
+         ++callcnt;
+      }
+   }
+   return callcnt;
+}
+
+int call_read_link_plugins(uint32_t rqstid,
+        const char * path,
+        enum PLUGIN_SEQUENCE seq)
+{
+   int callcnt = 0;
+   for (size_t i = 0; i < plugins_cnt; ++i)
+   {
+      Plugin * pplugin = &plugins[i];
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_read_link != NULL)
+      {
+         int rc = pplugin->callbacks_.cf_read_link(rqstid, path);
          if (rc != 0)
              return -rc;
          ++callcnt;
