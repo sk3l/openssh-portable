@@ -1,4 +1,0 @@
-#ifndef SFTP_RESPONSE_HANDLER_H
-#define SFTP_RESPONSE_HANDLER_H
-
-#endif
