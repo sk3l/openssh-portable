@@ -33,6 +33,28 @@ static const char * SFTP_CALLBACK_SYM [] = {
     "sftp_cf_attrs"
 };
 
+void set_cbk_attribs(
+    cbk_attribs_ptr attrs,
+    u_int32_t flags,
+    u_int64_t size,
+    u_int32_t uid,
+    u_int32_t gid,
+    u_int32_t perm,
+    u_int32_t atime,
+    u_int32_t mtime)
+{
+    if (attrs) {
+        attrs->flags = flags;
+        attrs->size  = size;
+        attrs->uid   = uid;
+        attrs->gid   = gid;
+        attrs->perm  = perm;
+        attrs->atime = atime;
+        attrs->mtime = mtime;
+    }
+}
+
+
 const char * get_sftp_callback_sym(enum SFTP_CALLBACK_FUNC scf)
 {
     return SFTP_CALLBACK_SYM[scf];

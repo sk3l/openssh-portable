@@ -324,7 +324,7 @@ int call_open_file_plugins(uint32_t rqstid,
         const char * filename,
         uint32_t access,
         uint32_t flags,
-        attribs_ptr attrs,
+        cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -581,7 +581,7 @@ int call_fstat_plugins(uint32_t rqstid,
 
 int call_setstat_plugins(uint32_t rqstid,
         const char * path,
-        attribs_ptr attrs,
+        cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -601,7 +601,7 @@ int call_setstat_plugins(uint32_t rqstid,
 
 int call_fsetstat_plugins(uint32_t rqstid,
         int handle,
-        attribs_ptr attrs,
+        cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;

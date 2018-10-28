@@ -51,11 +51,8 @@
 #include "sftp.h"
 #include "sftp-common.h"
 
-#define SFTP_PLUGIN 1
-#ifdef SFTP_PLUGIN
 #include "sftp-callback.h"
 #include "sftp-plugin.h"
-#endif
 
 /* Our verbosity */
 static LogLevel log_level = SYSLOG_LEVEL_ERROR;
@@ -79,6 +76,9 @@ static int readonly;
 
 /* Requests that are allowed/denied */
 static char *request_whitelist, *request_blacklist;
+
+/* Use of plugins */
+static int call_plugins;
 
 /* portable attributes, etc. */
 typedef struct Stat Stat;
@@ -684,7 +684,8 @@ process_open(u_int32_t id)
 	u_int32_t pflags;
 	Attrib a;
 	char *name;
-	int r, handle, fd, flags, mode, status = SSH2_FX_FAILURE;
+	int r, handle, fd, flags, mode, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	struct cbk_attribs fileattrs;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
 	    (r = sshbuf_get_u32(iqueue, &pflags)) != 0 || /* portable flags */
@@ -694,20 +695,21 @@ process_open(u_int32_t id)
 	debug3("request %u: open flags %d", id, pflags);
 	flags = flags_from_portable(pflags);
 	mode = (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ? a.perm : 0666;
-#ifdef SFTP_PLUGIN
-    struct attribs fileattrs = {
-        a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime
-    };
 
-    int callcnt = 0;
-    callcnt = call_open_file_plugins(
-                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE);
+    if (call_plugins) {
+        set_cbk_attribs(
+            &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
-    callcnt = call_open_file_plugins(
-                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD);
+        cbkcnt = call_open_file_plugins(
+	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+	    cbkcnt = call_open_file_plugins(
+	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD);
+
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
 	logit("open \"%s\" flags %s mode 0%o",
 	    name, string_from_portable(pflags), mode);
 	if (readonly &&
@@ -729,50 +731,49 @@ process_open(u_int32_t id)
 			}
 		}
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
+
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_open_file_plugins(
+    if (call_plugins) {
+        cbkcnt = call_open_file_plugins(
                 id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_AFTER);
+    }
 
-#endif
     free(name);
 }
 
 static void
 process_close(u_int32_t id)
 {
-	int r, handle, ret, status = SSH2_FX_FAILURE;
+	int r, handle, ret, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: close handle %u", id, handle);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
-    callcnt = call_close_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_close_plugins(
                 id, handle, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_close_plugins(
+        cbkcnt = call_close_plugins(
                 id, handle, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
-	handle_log_close(handle, NULL);
-	ret = handle_close(handle);
-	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-#ifdef SFTP_PLUGIN
+        replaced = (cbkcnt > 0) ? 1 : 0;
     }
-#endif
-	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_close_plugins(
-                id, handle, PLUGIN_SEQ_AFTER);
 
-#endif
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+	    handle_log_close(handle, NULL);
+	    ret = handle_close(handle);
+	    status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+    }
+	send_status(id, status);
+
+    if (call_plugins) {
+        cbkcnt = call_close_plugins(
+                id, handle, PLUGIN_SEQ_AFTER);
+    }
 }
 
 static void
@@ -780,7 +781,7 @@ process_read(u_int32_t id)
 {
 	u_char buf[64*1024];
 	u_int32_t len;
-	int r, handle, fd, ret, status = SSH2_FX_FAILURE;
+	int r, handle, fd, ret, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 	u_int64_t off;
 
 	if ((r = get_handle(iqueue, &handle)) != 0 ||
@@ -790,16 +791,18 @@ process_read(u_int32_t id)
 
 	debug("request %u: read \"%s\" (handle %d) off %llu len %d",
 	    id, handle_to_name(handle), handle, (unsigned long long)off, len);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
-    callcnt = call_read_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_read_plugins(
                 id, handle, off, len, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_read_plugins(
+        cbkcnt = call_read_plugins(
                 id, handle, off, len, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
 	if (len > sizeof buf) {
 		len = sizeof buf;
 		debug2("read change len %d", len);
@@ -822,16 +825,16 @@ process_read(u_int32_t id)
 			}
 		}
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
+
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_read_plugins(
-                id, handle, off, len, PLUGIN_SEQ_AFTER);
 
-#endif
+    if (call_plugins) {
+    cbkcnt = call_read_plugins(
+                id, handle, off, len, PLUGIN_SEQ_AFTER);
+    }
+
 }
 
 static void
@@ -839,7 +842,7 @@ process_write(u_int32_t id)
 {
 	u_int64_t off;
 	size_t len;
-	int r, handle, fd, ret, status;
+	int r, handle, fd, ret, status, cbkcnt, replaced = 0;
 	u_char *data;
 
 	if ((r = get_handle(iqueue, &handle)) != 0 ||
@@ -849,16 +852,19 @@ process_write(u_int32_t id)
 
 	debug("request %u: write \"%s\" (handle %d) off %llu len %zu",
 	    id, handle_to_name(handle), handle, (unsigned long long)off, len);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
-    callcnt = call_write_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_write_plugins(
                 id, handle, off, data, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_write_plugins(
+        cbkcnt = call_write_plugins(
                 id, handle, off, data, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	fd = handle_to_fd(handle);
 
 	if (fd < 0)
@@ -883,15 +889,16 @@ process_write(u_int32_t id)
 			}
 		}
 	}
-#ifdef SFTP_PLUGIN
-    }
-#endif
-	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_write_plugins(
-                id, handle, off, data, PLUGIN_SEQ_AFTER);
 
-#endif
+    }
+
+	send_status(id, status);
+
+    if (call_plugins) {
+        cbkcnt = call_write_plugins(
+                id, handle, off, data, PLUGIN_SEQ_AFTER);
+    }
+
 	free(data);
 }
 
@@ -901,33 +908,32 @@ process_do_stat(u_int32_t id, int do_lstat)
 	Attrib a;
 	struct stat st;
 	char *name;
-	int r, status = SSH2_FX_FAILURE;
+	int r, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: %sstat", id, do_lstat ? "l" : "");
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    if (do_lstat) {
-        callcnt = call_lstat_plugins(
-            id, name, 0, PLUGIN_SEQ_BEFORE);
+    if (call_plugins) {
+        if (do_lstat) {
+            cbkcnt = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_BEFORE);
 
-        callcnt = call_lstat_plugins(
-            id, name, 0, PLUGIN_SEQ_INSTEAD);
+            cbkcnt = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_INSTEAD);
+        } else {
+            cbkcnt = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_BEFORE);
 
-    } else {
-        callcnt = call_lstat_plugins(
-            id, name, 0, PLUGIN_SEQ_BEFORE);
+            cbkcnt = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_INSTEAD);
 
-        callcnt = call_lstat_plugins(
-            id, name, 0, PLUGIN_SEQ_INSTEAD);
-
+        }
+        replaced = (cbkcnt > 0) ? 1 : 0;
     }
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+    if (!replaced) { // skip default logic if any INSTEAD plugins
 	verbose("%sstat name \"%s\"", do_lstat ? "l" : "", name);
 	r = do_lstat ? lstat(name, &st) : stat(name, &st);
 	if (r < 0) {
@@ -937,20 +943,21 @@ process_do_stat(u_int32_t id, int do_lstat)
 		send_attrib(id, &a);
 		status = SSH2_FX_OK;
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
+
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
-#ifdef SFTP_PLUGIN
-    if (do_lstat) {
-        callcnt = call_lstat_plugins(
-            id, name, 0, PLUGIN_SEQ_AFTER);
-    } else {
-        callcnt = call_lstat_plugins(
-            id, name, 0, PLUGIN_SEQ_AFTER);
+
+    if (call_plugins) {
+        if (do_lstat) {
+            cbkcnt = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_AFTER);
+        } else {
+            cbkcnt = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_AFTER);
+        }
     }
-#endif
+
 	free(name);
 }
 
@@ -971,22 +978,25 @@ process_fstat(u_int32_t id)
 {
 	Attrib a;
 	struct stat st;
-	int fd, r, handle, status = SSH2_FX_FAILURE;
+	int fd, r, handle, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	debug("request %u: fstat \"%s\" (handle %u)",
 	    id, handle_to_name(handle), handle);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
-    callcnt = call_fstat_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_fstat_plugins(
                 id, handle, 0, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_fstat_plugins(
+        cbkcnt = call_fstat_plugins(
                 id, handle, 0, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	fd = handle_to_fd(handle);
 	if (fd >= 0) {
 		r = fstat(fd, &st);
@@ -998,16 +1008,16 @@ process_fstat(u_int32_t id)
 			status = SSH2_FX_OK;
 		}
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
+
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_fstat_plugins(
-                id, handle, 0, PLUGIN_SEQ_AFTER);
 
-#endif
+    if (call_plugins) {
+        cbkcnt = call_fstat_plugins(
+                id, handle, 0, PLUGIN_SEQ_AFTER);
+    }
+
 }
 
 static struct timeval *
@@ -1027,28 +1037,30 @@ process_setstat(u_int32_t id)
 {
 	Attrib a;
 	char *name;
-	int r, status = SSH2_FX_OK;
+	int r, status = SSH2_FX_OK, cbkcnt, replaced = 0;
+	struct cbk_attribs fileattrs;
 
-	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
+    if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
 	    (r = decode_attrib(iqueue, &a)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug("request %u: setstat name \"%s\"", id, name);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    struct attribs fileattrs = {
-        a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime
-    };
+    if (call_plugins) {
+        set_cbk_attribs(
+            &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
-    callcnt = call_setstat_plugins(
+        cbkcnt = call_setstat_plugins(
                 id, name, &fileattrs, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_setstat_plugins(
+        cbkcnt = call_setstat_plugins(
                 id, name, &fileattrs, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1: 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
 		logit("set \"%s\" size %llu",
 		    name, (unsigned long long)a.size);
@@ -1080,15 +1092,15 @@ process_setstat(u_int32_t id)
 		if (r == -1)
 			status = errno_to_portable(errno);
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
-	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_setstat_plugins(
-                id, name, &fileattrs, PLUGIN_SEQ_AFTER);
 
-#endif
+	send_status(id, status);
+
+    if (call_plugins) {
+        cbkcnt = call_setstat_plugins(
+                id, name, &fileattrs, PLUGIN_SEQ_AFTER);
+    }
+
 	free(name);
 }
 
@@ -1096,29 +1108,31 @@ static void
 process_fsetstat(u_int32_t id)
 {
 	Attrib a;
-	int handle, fd, r;
+	int handle, fd, r, cbkcnt, replaced = 0;
 	int status = SSH2_FX_OK;
+	struct cbk_attribs fileattrs;
 
 	if ((r = get_handle(iqueue, &handle)) != 0 ||
 	    (r = decode_attrib(iqueue, &a)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug("request %u: fsetstat handle %d", id, handle);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    struct attribs fileattrs = {
-        a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime
-    };
+    if (call_plugins) {
+        set_cbk_attribs(
+            &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
-    callcnt = call_fsetstat_plugins(
+        cbkcnt = call_fsetstat_plugins(
                 id, handle, &fileattrs, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_fsetstat_plugins(
+        cbkcnt = call_fsetstat_plugins(
                 id, handle, &fileattrs, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	fd = handle_to_fd(handle);
 	if (fd < 0)
 		status = SSH2_FX_FAILURE;
@@ -1169,15 +1183,14 @@ process_fsetstat(u_int32_t id)
 				status = errno_to_portable(errno);
 		}
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
-	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_fsetstat_plugins(
-                id, handle, &fileattrs, PLUGIN_SEQ_AFTER);
 
-#endif
+	send_status(id, status);
+
+    if (call_plugins) {
+        cbkcnt = call_fsetstat_plugins(
+                id, handle, &fileattrs, PLUGIN_SEQ_AFTER);
+    }
 }
 
 static void
@@ -1185,23 +1198,26 @@ process_opendir(u_int32_t id)
 {
 	DIR *dirp = NULL;
 	char *path;
-	int r, handle, status = SSH2_FX_FAILURE;
+	int r, handle, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: opendir", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_open_dir_plugins(
+    if (call_plugins) {
+
+        cbkcnt = call_open_dir_plugins(
                 id, path, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_open_dir_plugins(
+        cbkcnt = call_open_dir_plugins(
                 id, path, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	logit("opendir \"%s\"", path);
 	dirp = opendir(path);
 	if (dirp == NULL) {
@@ -1216,15 +1232,15 @@ process_opendir(u_int32_t id)
 		}
 
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
+
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_open_dir_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_open_dir_plugins(
                 id, path, PLUGIN_SEQ_AFTER);
-#endif
+    }
 	free(path);
 }
 
@@ -1234,24 +1250,26 @@ process_readdir(u_int32_t id)
 	DIR *dirp;
 	struct dirent *dp;
 	char *path;
-	int r, handle;
+	int r, handle, cbkcnt, replaced = 0;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug("request %u: readdir \"%s\" (handle %d)", id,
 	    handle_to_name(handle), handle);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_read_dir_plugins(
+    if (call_plugins) {
+        cbkcnt = call_read_dir_plugins(
                 id, handle, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_read_dir_plugins(
+        cbkcnt = call_read_dir_plugins(
                 id, handle, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	dirp = handle_to_dir(handle);
 	path = handle_to_name(handle);
 	if (dirp == NULL || path == NULL) {
@@ -1293,46 +1311,50 @@ process_readdir(u_int32_t id)
 		}
 		free(stats);
 	}
-#ifdef SFTP_PLUGIN
     }
 
-    callcnt = call_read_dir_plugins(
+    if (call_plugins) {
+        cbkcnt = call_read_dir_plugins(
                 id, handle, PLUGIN_SEQ_AFTER);
-#endif
+    }
 }
 
 static void
 process_remove(u_int32_t id)
 {
 	char *name;
-	int r, status = SSH2_FX_FAILURE;
+	int r, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: remove", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_remove_plugins(
+    if (call_plugins) {
+        cbkcnt = call_remove_plugins(
                 id, name, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_remove_plugins(
+        cbkcnt = call_remove_plugins(
                 id, name, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	logit("remove name \"%s\"", name);
 	r = unlink(name);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-#ifdef SFTP_PLUGIN
+
     }
-#endif
+
 	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_remove_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_remove_plugins(
                 id, name, PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(name);
 }
 
@@ -1341,7 +1363,7 @@ process_mkdir(u_int32_t id)
 {
 	Attrib a;
 	char *name;
-	int r, mode, status = SSH2_FX_FAILURE;
+	int r, mode, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
 	    (r = decode_attrib(iqueue, &a)) != 0)
@@ -1350,28 +1372,32 @@ process_mkdir(u_int32_t id)
 	mode = (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ?
 	    a.perm & 07777 : 0777;
 	debug3("request %u: mkdir", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_mkdir_plugins(
+    if (call_plugins) {
+        cbkcnt = call_mkdir_plugins(
                 id, name, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_mkdir_plugins(
+        cbkcnt = call_mkdir_plugins(
                 id, name, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	logit("mkdir name \"%s\" mode 0%o", name, mode);
 	r = mkdir(name, mode);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-#ifdef SFTP_PLUGIN
+
     }
-#endif
+
 	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_mkdir_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_mkdir_plugins(
                 id, name, PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(name);
 }
 
@@ -1379,34 +1405,38 @@ static void
 process_rmdir(u_int32_t id)
 {
 	char *name;
-	int r, status;
+	int r, status, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: rmdir", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_rmdir_plugins(
+    if (call_plugins) {
+        cbkcnt = call_rmdir_plugins(
                 id, name, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_rmdir_plugins(
+        cbkcnt = call_rmdir_plugins(
                 id, name, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	logit("rmdir name \"%s\"", name);
 	r = rmdir(name);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-#ifdef SFTP_PLUGIN
+
     }
-#endif
+
 	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_rmdir_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_rmdir_plugins(
                 id, name, PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(name);
 }
 
@@ -1415,7 +1445,7 @@ process_realpath(u_int32_t id)
 {
 	char resolvedname[PATH_MAX];
 	char *path;
-	int r;
+	int r, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1425,17 +1455,19 @@ process_realpath(u_int32_t id)
 		path = xstrdup(".");
 	}
 	debug3("request %u: realpath", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_realpath_plugins(
+    if (call_plugins) {
+        cbkcnt = call_realpath_plugins(
                 id, path, 0, "", PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_realpath_plugins(
+        cbkcnt = call_realpath_plugins(
                 id, path, 0, "", PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	verbose("realpath \"%s\"", path);
 	if (realpath(path, resolvedname) == NULL) {
 		send_status(id, errno_to_portable(errno));
@@ -1445,11 +1477,13 @@ process_realpath(u_int32_t id)
 		s.name = s.long_name = resolvedname;
 		send_names(id, 1, &s);
 	}
-#ifdef SFTP_PLUGIN
     }
-    callcnt = call_realpath_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_realpath_plugins(
                 id, path, 0, "", PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(path);
 }
 
@@ -1457,7 +1491,7 @@ static void
 process_rename(u_int32_t id)
 {
 	char *oldpath, *newpath;
-	int r, status;
+	int r, status, cbkcnt, replaced = 0;
 	struct stat sb;
 
 	if ((r = sshbuf_get_cstring(iqueue, &oldpath, NULL)) != 0 ||
@@ -1465,17 +1499,20 @@ process_rename(u_int32_t id)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: rename", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_rename_plugins(
+    if (call_plugins) {
+
+        cbkcnt = call_rename_plugins(
                 id, oldpath, newpath, 0, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_rename_plugins(
+        cbkcnt = call_rename_plugins(
                 id, oldpath, newpath, 0, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	logit("rename old \"%s\" new \"%s\"", oldpath, newpath);
 	status = SSH2_FX_FAILURE;
 	if (lstat(oldpath, &sb) == -1)
@@ -1519,14 +1556,15 @@ process_rename(u_int32_t id)
 		else
 			status = SSH2_FX_OK;
 	}
-#ifdef SFTP_PLUGIN
     }
-#endif
+
 	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_rename_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_rename_plugins(
                 id, oldpath, newpath, 0, PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(oldpath);
 	free(newpath);
 }
@@ -1534,7 +1572,7 @@ process_rename(u_int32_t id)
 static void
 process_readlink(u_int32_t id)
 {
-	int r, len;
+	int r, len, cbkcnt, replaced = 0;
 	char buf[PATH_MAX];
 	char *path;
 
@@ -1542,17 +1580,19 @@ process_readlink(u_int32_t id)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: readlink", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_read_link_plugins(
+    if (call_plugins) {
+        cbkcnt = call_read_link_plugins(
                 id, path, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_read_link_plugins(
+        cbkcnt = call_read_link_plugins(
                 id, path, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	verbose("readlink \"%s\"", path);
 	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
 		send_status(id, errno_to_portable(errno));
@@ -1564,11 +1604,13 @@ process_readlink(u_int32_t id)
 		s.name = s.long_name = buf;
 		send_names(id, 1, &s);
 	}
-#ifdef SFTP_PLUGIN
     }
-    callcnt = call_read_link_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_read_link_plugins(
                 id, path, PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(path);
 }
 
@@ -1576,36 +1618,41 @@ static void
 process_symlink(u_int32_t id)
 {
 	char *oldpath, *newpath;
-	int r, status;
+	int r, status, cbkcnt, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &oldpath, NULL)) != 0 ||
 	    (r = sshbuf_get_cstring(iqueue, &newpath, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: symlink", id);
-#ifdef SFTP_PLUGIN
-    int callcnt = 0;
 
-    callcnt = call_link_plugins(
+    if (call_plugins) {
+
+        cbkcnt = call_link_plugins(
                 id, oldpath, newpath, 1, PLUGIN_SEQ_BEFORE);
 
-    callcnt = call_link_plugins(
+        cbkcnt = call_link_plugins(
                 id, oldpath, newpath, 1, PLUGIN_SEQ_INSTEAD);
 
-    if (callcnt == 0) { // skip default logic if any INSTEAD plugins
-#endif
+        replaced = (cbkcnt > 0) ? 1 : 0;
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+
 	logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
 	/* this will fail if 'newpath' exists */
 	r = symlink(oldpath, newpath);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-#ifdef SFTP_PLUGIN
+
     }
-#endif
+
 	send_status(id, status);
-#ifdef SFTP_PLUGIN
-    callcnt = call_link_plugins(
+
+    if (call_plugins) {
+        cbkcnt = call_link_plugins(
                 id, oldpath, newpath, 1, PLUGIN_SEQ_AFTER);
-#endif
+    }
+
 	free(oldpath);
 	free(newpath);
 }
@@ -1824,7 +1871,7 @@ sftp_server_usage(void)
 	extern char *__progname;
 
 	fprintf(stderr,
-	    "usage: %s [-ehR] [-d start_directory] [-f log_facility] "
+	    "usage: %s [-CehR] [-d start_directory] [-f log_facility] "
 	    "[-l log_level]\n\t[-P blacklisted_requests] "
 	    "[-p whitelisted_requests] [-u umask]\n"
 	    "       %s -Q protocol_feature\n",
@@ -1906,6 +1953,9 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 				fatal("Refused requests already set");
 			request_blacklist = xstrdup(optarg);
 			break;
+        case 'C':
+            call_plugins = 1;
+            break;
 		case 'u':
 			errno = 0;
 			mask = strtol(optarg, &cp, 8);
@@ -1921,6 +1971,9 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	}
 
 	log_init(__progname, log_level, log_facility, log_stderr);
+
+    if (call_plugins)
+        sftp_plugins_init();
 
 	/*
 	 * On platforms where we can, avoid making /proc/self/{mem,maps}
@@ -2043,4 +2096,8 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 			fatal("%s: sshbuf_check_reserve: %s",
 			    __func__, ssh_err(r));
 	}
+
+    if (call_plugins)
+        sftp_plugins_release();
+
 }

@@ -3,7 +3,7 @@
 
 #include "includes.h"
 /* File attributes */
-struct attribs {
+struct cbk_attribs {
 	u_int32_t	flags;
 	u_int64_t	size;
 	u_int32_t	uid;
@@ -12,10 +12,13 @@ struct attribs {
 	u_int32_t	atime;
 	u_int32_t	mtime;
 };
-typedef struct attribs * attribs_ptr;
+typedef struct cbk_attribs * cbk_attribs_ptr;
+
+void set_cbk_attribs(
+    cbk_attribs_ptr, u_int32_t, u_int64_t, u_int32_t, u_int32_t, u_int32_t,u_int32_t, u_int32_t);
 
 /* Request callback functions */
-typedef int (*sftp_cbk_open_file)(uint32_t, const char *, uint32_t, uint32_t, attribs_ptr);
+typedef int (*sftp_cbk_open_file)(uint32_t, const char *, uint32_t, uint32_t, cbk_attribs_ptr);
 typedef int (*sftp_cbk_open_dir) (uint32_t, const char *);
 typedef int (*sftp_cbk_close)    (uint32_t, int);
 typedef int (*sftp_cbk_read)     (uint32_t, int, uint64_t, uint32_t);
@@ -28,8 +31,8 @@ typedef int (*sftp_cbk_rmdir)    (uint32_t, const char *);
 typedef int (*sftp_cbk_stat)     (uint32_t, const char *, uint32_t);
 typedef int (*sftp_cbk_lstat)    (uint32_t, const char *, uint32_t);
 typedef int (*sftp_cbk_fstat)    (uint32_t, int, uint32_t);
-typedef int (*sftp_cbk_setstat)  (uint32_t, const char *, attribs_ptr);
-typedef int (*sftp_cbk_fsetstat) (uint32_t, int, attribs_ptr);
+typedef int (*sftp_cbk_setstat)  (uint32_t, const char *, cbk_attribs_ptr);
+typedef int (*sftp_cbk_fsetstat) (uint32_t, int, cbk_attribs_ptr);
 typedef int (*sftp_cbk_read_link)(uint32_t, const char *);
 typedef int (*sftp_cbk_link)     (uint32_t, const char *, const char *, int);
 typedef int (*sftp_cbk_lock)     (uint32_t, const char *, uint64_t, uint64_t,int);
