@@ -1899,7 +1899,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	pw = pwcopy(user_pw);
 
 	while (!skipargs && (ch = getopt(argc, argv,
-	    "d:f:l:P:p:Q:u:cehR")) != -1) {
+	    "d:f:l:P:p:Q:u:cCehR")) != -1) {
 		switch (ch) {
 		case 'Q':
 			if (strcasecmp(optarg, "requests") != 0) {
