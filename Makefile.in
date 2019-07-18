@@ -115,8 +115,7 @@ SSHDOBJS=sshd.o auth-rhosts.o auth-passwd.o \
 	monitor.o monitor_wrap.o auth-krb5.o \
 	auth2-gss.o gss-serv.o gss-serv-krb5.o \
 	loginrec.o auth-pam.o auth-shadow.o auth-sia.o md5crypt.o \
-	sftp-server.o sftp-common.o sftp-handler.o sftp-handler-sink.o \
-	sftp-request-handler.o sftp-response-handler.o\
+	sftp-server.o sftp-common.o sftp-plugin.o sftp-callback.o \
 	sandbox-null.o sandbox-rlimit.o sandbox-systrace.o sandbox-darwin.o \
 	sandbox-seccomp-filter.o sandbox-capsicum.o sandbox-pledge.o \
 	sandbox-solaris.o uidswap.o
@@ -196,8 +195,8 @@ ssh-pkcs11-helper$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-pkcs11-helper.o ssh-pkcs11
 ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-keyscan.o
 	$(LD) -o $@ ssh-keyscan.o $(LDFLAGS) -lssh -lopenbsd-compat -lssh $(LIBS)
 
-sftp-server$(EXEEXT): $(LIBCOMPAT) libssh.a sftp.o sftp-common.o sftp-handler.o sftp-handler-sink.o sftp-request-handler.o sftp-response-handler.o sftp-server.o sftp-server-main.o
-	$(LD) -o $@ sftp-server.o sftp-common.o sftp-handler.o sftp-handler-sink.o sftp-request-handler.o sftp-response-handler.o sftp-server-main.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
+sftp-server$(EXEEXT): $(LIBCOMPAT) libssh.a sftp.o sftp-common.o sftp-plugin.o sftp-callback.o sftp-server.o sftp-server-main.o
+	$(LD) -o $@ sftp-server.o sftp-common.o sftp-plugin.o sftp-callback.o sftp-server-main.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
 
 sftp$(EXEEXT): $(LIBCOMPAT) libssh.a sftp.o sftp-client.o sftp-common.o sftp-glob.o progressmeter.o
 	$(LD) -o $@ progressmeter.o sftp.o sftp-client.o sftp-common.o sftp-glob.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(LIBEDIT)
@@ -248,6 +247,8 @@ clean:	regressclean
 	rm -f regress/unittests/kex/test_kex$(EXEEXT)
 	rm -f regress/unittests/match/*.o
 	rm -f regress/unittests/match/test_match$(EXEEXT)
+	rm -f regress/unittests/test_sftp_plugin/*.o
+	rm -f regress/unittests/test_sftp_plugin/test_sftp_plugin$(EXEEXT)
 	rm -f regress/unittests/utf8/*.o
 	rm -f regress/unittests/utf8/test_utf8$(EXEEXT)
 	rm -f regress/misc/kexfuzz/*.o
@@ -278,6 +279,8 @@ distclean:	regressclean
 	rm -f regress/unittests/kex/test_kex
 	rm -f regress/unittests/match/*.o
 	rm -f regress/unittests/match/test_match
+	rm -f regress/unittests/sftp-plugin/*.o
+	rm -f regress/unittests/sftp-plugin/test_sftp_plugin
 	rm -f regress/unittests/utf8/*.o
 	rm -f regress/unittests/utf8/test_utf8
 	rm -f regress/misc/kexfuzz/*.o
@@ -555,6 +558,17 @@ regress/unittests/match/test_match$(EXEEXT): \
 	    regress/unittests/test_helper/libtest_helper.a \
 	    -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS)
 
+UNITTESTS_TEST_SFTP_PLUGIN_OBJS=\
+    sftp-callback.o \
+	regress/unittests/sftp-plugin/tests.o
+
+regress/unittests/sftp-plugin/test_sftp_plugin$(EXEEXT): \
+    ${UNITTESTS_TEST_SFTP_PLUGIN_OBJS} \
+    regress/unittests/test_helper/libtest_helper.a libssh.a
+	$(LD) -o $@ $(LDFLAGS) $(UNITTESTS_TEST_SFTP_PLUGIN_OBJS) \
+	    regress/unittests/test_helper/libtest_helper.a \
+	    -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS)
+
 UNITTESTS_TEST_UTF8_OBJS=\
 	regress/unittests/utf8/tests.o
 
@@ -584,6 +598,7 @@ regress-binaries: regress/modpipe$(EXEEXT) \
 	regress/unittests/hostkeys/test_hostkeys$(EXEEXT) \
 	regress/unittests/kex/test_kex$(EXEEXT) \
 	regress/unittests/match/test_match$(EXEEXT) \
+	regress/unittests/sftp-plugin/test_sftp_plugin$(EXEEXT) \
 	regress/unittests/utf8/test_utf8$(EXEEXT) \
 	regress/misc/kexfuzz/kexfuzz$(EXEEXT)
 
