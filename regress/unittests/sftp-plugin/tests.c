@@ -24,8 +24,10 @@ int main(int argc, char ** argv)
    init_plugins(fbuf);
 
    if(load_plugins_so() != 0)
-   		printf("%s: load_plugin_so failed", __func__);
-
+   {
+       printf("%s: load_plugin_so failed", __func__);
+       return 1;
+   }
    sshbuf_free(fbuf);
 
    if (call_open_dir_plugins(1, "/test/path", PLUGIN_SEQ_BEFORE) < 0)
