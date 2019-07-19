@@ -1,10 +1,12 @@
-#include "includes.h"
+//#include "includes.h"
 
 #include <ctype.h>
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <sys/types.h>
 
 #include "sshbuf.h"
 #include "sftp-plugin.h"
@@ -320,10 +322,10 @@ int get_plugins(Plugin ** pplugins, size_t * cnt)
  * Call the chain of plugin methods for a given SFTP protocol event,
  * using the specified plugin sequence type (before, instead or after)
  */
-int call_open_file_plugins(uint32_t rqstid,
+int call_open_file_plugins(u_int32_t rqstid,
         const char * filename,
-        uint32_t access,
-        uint32_t flags,
+        u_int32_t access,
+        u_int32_t flags,
         cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -342,7 +344,7 @@ int call_open_file_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_open_dir_plugins(uint32_t rqstid,
+int call_open_dir_plugins(u_int32_t rqstid,
         const char * dirpath,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -361,7 +363,7 @@ int call_open_dir_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_close_plugins(uint32_t rqstid,
+int call_close_plugins(u_int32_t rqstid,
         int handle,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -380,10 +382,10 @@ int call_close_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_read_plugins(uint32_t rqstid,
+int call_read_plugins(u_int32_t rqstid,
         int handle,
-        uint64_t offset,
-        uint32_t length,
+        u_int64_t offset,
+        u_int32_t length,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -401,7 +403,7 @@ int call_read_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_read_dir_plugins(uint32_t rqstid,
+int call_read_dir_plugins(u_int32_t rqstid,
         int handle,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -420,9 +422,9 @@ int call_read_dir_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_write_plugins(uint32_t rqstid,
+int call_write_plugins(u_int32_t rqstid,
         int handle,
-        uint64_t offset,
+        u_int64_t offset,
         const char * data,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -441,7 +443,7 @@ int call_write_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_remove_plugins(uint32_t rqstid,
+int call_remove_plugins(u_int32_t rqstid,
         const char * filename,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -460,10 +462,10 @@ int call_remove_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_rename_plugins(uint32_t rqstid,
+int call_rename_plugins(u_int32_t rqstid,
         const char * oldfilename,
         const char * newfilename,
-        uint32_t flags,
+        u_int32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -481,7 +483,7 @@ int call_rename_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_mkdir_plugins(uint32_t rqstid,
+int call_mkdir_plugins(u_int32_t rqstid,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -500,7 +502,7 @@ int call_mkdir_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_rmdir_plugins(uint32_t rqstid,
+int call_rmdir_plugins(u_int32_t rqstid,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -519,9 +521,9 @@ int call_rmdir_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_stat_plugins(uint32_t rqstid,
+int call_stat_plugins(u_int32_t rqstid,
         const char * path,
-        uint32_t flags,
+        u_int32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -539,9 +541,9 @@ int call_stat_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_lstat_plugins(uint32_t rqstid,
+int call_lstat_plugins(u_int32_t rqstid,
         const char * path,
-        uint32_t flags,
+        u_int32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -559,9 +561,9 @@ int call_lstat_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_fstat_plugins(uint32_t rqstid,
+int call_fstat_plugins(u_int32_t rqstid,
         int handle,
-        uint32_t flags,
+        u_int32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -579,7 +581,7 @@ int call_fstat_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_setstat_plugins(uint32_t rqstid,
+int call_setstat_plugins(u_int32_t rqstid,
         const char * path,
         cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
@@ -599,7 +601,7 @@ int call_setstat_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_fsetstat_plugins(uint32_t rqstid,
+int call_fsetstat_plugins(u_int32_t rqstid,
         int handle,
         cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
@@ -619,7 +621,7 @@ int call_fsetstat_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_read_link_plugins(uint32_t rqstid,
+int call_read_link_plugins(u_int32_t rqstid,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -638,7 +640,7 @@ int call_read_link_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_link_plugins(uint32_t rqstid,
+int call_link_plugins(u_int32_t rqstid,
         const char * newlink,
         const char * curlink,
         int symlink,
@@ -659,10 +661,10 @@ int call_link_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_lock_plugins(uint32_t rqstid,
+int call_lock_plugins(u_int32_t rqstid,
         const char * handle,
-        uint64_t offset,
-        uint64_t length,
+        u_int64_t offset,
+        u_int64_t length,
         int lockmask,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -681,10 +683,10 @@ int call_lock_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_unlock_plugins(uint32_t rqstid,
+int call_unlock_plugins(u_int32_t rqstid,
         const char * handle,
-        uint64_t offset,
-        uint64_t length,
+        u_int64_t offset,
+        u_int64_t length,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -702,9 +704,9 @@ int call_unlock_plugins(uint32_t rqstid,
    return callcnt;
 }
 
-int call_realpath_plugins(uint32_t rqstid,
+int call_realpath_plugins(u_int32_t rqstid,
         const char * origpath,
-        uint8_t ctlbyte,
+        u_int8_t ctlbyte,
         const char * path,
         enum PLUGIN_SEQUENCE seq)
 {
