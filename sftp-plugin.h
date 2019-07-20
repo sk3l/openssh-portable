@@ -3,7 +3,6 @@
 
 #include <sys/types.h>
 
-#include "sftp.h"
 #include "sftp-callback.h"
 
 #define MAX_CALLBACK_IDX SSH2_FXP_EXTENDED_REPLY
