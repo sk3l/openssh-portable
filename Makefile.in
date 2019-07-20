@@ -247,8 +247,9 @@ clean:	regressclean
 	rm -f regress/unittests/kex/test_kex$(EXEEXT)
 	rm -f regress/unittests/match/*.o
 	rm -f regress/unittests/match/test_match$(EXEEXT)
-	rm -f regress/unittests/test_sftp_plugin/*.o
-	rm -f regress/unittests/test_sftp_plugin/test_sftp_plugin$(EXEEXT)
+	rm -f regress/unittests/sftp-plugin/*.o
+	rm -f regress/unittests/sftp-plugin/test_sftp_plugin$(EXEEXT)
+	rm -f regress/unittests/sftp-plugin/libtest_client_plugin.so
 	rm -f regress/unittests/utf8/*.o
 	rm -f regress/unittests/utf8/test_utf8$(EXEEXT)
 	rm -f regress/misc/kexfuzz/*.o
@@ -281,6 +282,7 @@ distclean:	regressclean
 	rm -f regress/unittests/match/test_match
 	rm -f regress/unittests/sftp-plugin/*.o
 	rm -f regress/unittests/sftp-plugin/test_sftp_plugin
+	rm -f regress/unittests/sftp-plugin/libtest_client_plugin.so
 	rm -f regress/unittests/utf8/*.o
 	rm -f regress/unittests/utf8/test_utf8
 	rm -f regress/misc/kexfuzz/*.o
@@ -559,13 +561,23 @@ regress/unittests/match/test_match$(EXEEXT): \
 	    -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS)
 
 UNITTESTS_TEST_SFTP_PLUGIN_OBJS=\
-    sftp-callback.o \
+	sftp-callback.o \
 	regress/unittests/sftp-plugin/tests.o
 
 regress/unittests/sftp-plugin/test_sftp_plugin$(EXEEXT): \
     ${UNITTESTS_TEST_SFTP_PLUGIN_OBJS} \
     regress/unittests/test_helper/libtest_helper.a libssh.a
 	$(LD) -o $@ $(LDFLAGS) $(UNITTESTS_TEST_SFTP_PLUGIN_OBJS) \
+	    regress/unittests/test_helper/libtest_helper.a \
+	    -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS)
+
+UNITTESTS_LIB_TEST_CLIENT_PLUGIN_OBJS=\
+    regress/unittests/sftp-plugin/test_client_plugin.o \
+
+regress/unittests/sftp-plugin/libtest_client_plugin.so: \
+    ${UNITTESTS_LIB_TEST_CLIENT_PLUGIN_OBJS} \
+    regress/unittests/test_helper/libtest_helper.a libssh.a
+	$(LD) -o $@ $(LDFLAGS) -shared ${UNITTESTS_LIB_TEST_CLIENT_PLUGIN_OBJS} \
 	    regress/unittests/test_helper/libtest_helper.a \
 	    -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS)
 
@@ -599,6 +611,7 @@ regress-binaries: regress/modpipe$(EXEEXT) \
 	regress/unittests/kex/test_kex$(EXEEXT) \
 	regress/unittests/match/test_match$(EXEEXT) \
 	regress/unittests/sftp-plugin/test_sftp_plugin$(EXEEXT) \
+	regress/unittests/sftp-plugin/libtest_client_plugin.so \
 	regress/unittests/utf8/test_utf8$(EXEEXT) \
 	regress/misc/kexfuzz/kexfuzz$(EXEEXT)
 
