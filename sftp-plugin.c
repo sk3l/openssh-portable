@@ -364,7 +364,7 @@ int call_open_dir_plugins(u_int32_t rqstid,
 }
 
 int call_close_plugins(u_int32_t rqstid,
-        int handle,
+        const char * handle,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -383,7 +383,7 @@ int call_close_plugins(u_int32_t rqstid,
 }
 
 int call_read_plugins(u_int32_t rqstid,
-        int handle,
+        const char * handle,
         u_int64_t offset,
         u_int32_t length,
         enum PLUGIN_SEQUENCE seq)
@@ -404,7 +404,7 @@ int call_read_plugins(u_int32_t rqstid,
 }
 
 int call_read_dir_plugins(u_int32_t rqstid,
-        int handle,
+        const char * handle,
         enum PLUGIN_SEQUENCE seq)
 {
    int callcnt = 0;
@@ -423,7 +423,7 @@ int call_read_dir_plugins(u_int32_t rqstid,
 }
 
 int call_write_plugins(u_int32_t rqstid,
-        int handle,
+        const char * handle,
         u_int64_t offset,
         const char * data,
         enum PLUGIN_SEQUENCE seq)
@@ -562,7 +562,7 @@ int call_lstat_plugins(u_int32_t rqstid,
 }
 
 int call_fstat_plugins(u_int32_t rqstid,
-        int handle,
+        const char * handle,
         u_int32_t flags,
         enum PLUGIN_SEQUENCE seq)
 {
@@ -602,7 +602,7 @@ int call_setstat_plugins(u_int32_t rqstid,
 }
 
 int call_fsetstat_plugins(u_int32_t rqstid,
-        int handle,
+        const char * handle,
         cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq)
 {

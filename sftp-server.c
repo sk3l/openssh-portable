@@ -755,10 +755,10 @@ process_close(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_close_plugins(
-                id, handle, PLUGIN_SEQ_BEFORE);
+                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE);
 
         cbkcnt = call_close_plugins(
-                id, handle, PLUGIN_SEQ_INSTEAD);
+                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD);
 
         replaced = (cbkcnt > 0) ? 1 : 0;
     }
@@ -772,7 +772,7 @@ process_close(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_close_plugins(
-                id, handle, PLUGIN_SEQ_AFTER);
+                id, handle_to_name(handle), PLUGIN_SEQ_AFTER);
     }
 }
 
@@ -794,10 +794,10 @@ process_read(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_read_plugins(
-                id, handle, off, len, PLUGIN_SEQ_BEFORE);
+                id, handle_to_name(handle), off, len, PLUGIN_SEQ_BEFORE);
 
         cbkcnt = call_read_plugins(
-                id, handle, off, len, PLUGIN_SEQ_INSTEAD);
+                id, handle_to_name(handle), off, len, PLUGIN_SEQ_INSTEAD);
 
         replaced = (cbkcnt > 0) ? 1 : 0;
     }
@@ -832,7 +832,7 @@ process_read(u_int32_t id)
 
     if (call_plugins) {
     cbkcnt = call_read_plugins(
-                id, handle, off, len, PLUGIN_SEQ_AFTER);
+                id, handle_to_name(handle), off, len, PLUGIN_SEQ_AFTER);
     }
 
 }
@@ -855,10 +855,10 @@ process_write(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_write_plugins(
-                id, handle, off, data, PLUGIN_SEQ_BEFORE);
+                id, handle_to_name(handle), off, data, PLUGIN_SEQ_BEFORE);
 
         cbkcnt = call_write_plugins(
-                id, handle, off, data, PLUGIN_SEQ_INSTEAD);
+                id, handle_to_name(handle), off, data, PLUGIN_SEQ_INSTEAD);
 
         replaced = (cbkcnt > 0) ? 1 : 0;
     }
@@ -896,7 +896,7 @@ process_write(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_write_plugins(
-                id, handle, off, data, PLUGIN_SEQ_AFTER);
+                id, handle_to_name(handle), off, data, PLUGIN_SEQ_AFTER);
     }
 
 	free(data);
@@ -987,10 +987,10 @@ process_fstat(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_fstat_plugins(
-                id, handle, 0, PLUGIN_SEQ_BEFORE);
+                id, handle_to_name(handle), 0, PLUGIN_SEQ_BEFORE);
 
         cbkcnt = call_fstat_plugins(
-                id, handle, 0, PLUGIN_SEQ_INSTEAD);
+                id, handle_to_name(handle), 0, PLUGIN_SEQ_INSTEAD);
 
         replaced = (cbkcnt > 0) ? 1 : 0;
     }
@@ -1015,7 +1015,7 @@ process_fstat(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_fstat_plugins(
-                id, handle, 0, PLUGIN_SEQ_AFTER);
+                id, handle_to_name(handle), 0, PLUGIN_SEQ_AFTER);
     }
 
 }
@@ -1123,10 +1123,10 @@ process_fsetstat(u_int32_t id)
             &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
         cbkcnt = call_fsetstat_plugins(
-                id, handle, &fileattrs, PLUGIN_SEQ_BEFORE);
+                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_BEFORE);
 
         cbkcnt = call_fsetstat_plugins(
-                id, handle, &fileattrs, PLUGIN_SEQ_INSTEAD);
+                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_INSTEAD);
 
         replaced = (cbkcnt > 0) ? 1 : 0;
     }
@@ -1189,7 +1189,7 @@ process_fsetstat(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_fsetstat_plugins(
-                id, handle, &fileattrs, PLUGIN_SEQ_AFTER);
+                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_AFTER);
     }
 }
 
@@ -1260,10 +1260,10 @@ process_readdir(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_read_dir_plugins(
-                id, handle, PLUGIN_SEQ_BEFORE);
+                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE);
 
         cbkcnt = call_read_dir_plugins(
-                id, handle, PLUGIN_SEQ_INSTEAD);
+                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD);
 
         replaced = (cbkcnt > 0) ? 1 : 0;
     }
@@ -1315,7 +1315,7 @@ process_readdir(u_int32_t id)
 
     if (call_plugins) {
         cbkcnt = call_read_dir_plugins(
-                id, handle, PLUGIN_SEQ_AFTER);
+                id, handle_to_name(handle), PLUGIN_SEQ_AFTER);
     }
 }
 
@@ -1971,7 +1971,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	}
 
 	log_init(__progname, log_level, log_facility, log_stderr);
-
+    sleep(15);
     if (call_plugins)
         sftp_plugins_init();
 
