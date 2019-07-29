@@ -85,7 +85,6 @@ static int load_plugin_conf(const char * confpath, struct sshbuf * fbuf)
    size_t len, rc;
    FILE * fconf;
 
-   printf("Attempting to open SFTP pluing conf '%s'\n", confpath);
    if ((fconf = fopen(confpath, "r")) == NULL)
    {
       perror(SFTP_PLUGIN_CONF);
