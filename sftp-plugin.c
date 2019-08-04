@@ -1,9 +1,10 @@
-//#include "includes.h"
-
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <dlfcn.h>
-#include <stdlib.h>
+
 #include <stdio.h>
+
+#include <stdlib.h>
 #include <string.h>
 
 #include <sys/types.h>
@@ -263,12 +264,14 @@ static int load_plugins_so()
               cf != CBACK_FUNC_SENTRY;
               ++cf)
       {
+          sftp_cbk_func pfunc;
+
           symstr = get_sftp_callback_sym(cf);
           if (symstr == NULL)
               return -1;
 
           dlerror();
-          sftp_cbk_func pfunc = dlsym(pplugin->so_handle_, symstr);
+          *(void **)(&pfunc)  = dlsym(pplugin->so_handle_, symstr);
           dlerrstr = dlerror();
           if (dlerrstr != NULL)
               continue;     // TO DO - call dlerror()

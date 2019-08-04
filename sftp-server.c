@@ -2089,8 +2089,9 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 
 	log_init(__progname, log_level, log_facility, log_stderr);
 
-    if (call_plugins)
+    if (call_plugins) {
         sftp_plugins_init();
+    }
 
 	/*
 	 * On platforms where we can, avoid making /proc/self/{mem,maps}
