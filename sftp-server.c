@@ -467,6 +467,20 @@ handle_log_exit(void)
 			handle_log_close(i, "forced");
 }
 
+static void
+handle_log_plugin(const char *name, enum PLUGIN_SEQUENCE seq, int rcode, struct callback_stats *cbkstats)
+{
+    const char *seq_name = plugin_sequence_enum_to_str(seq);
+
+	if (rcode == PLUGIN_CBK_SUCCESS) {
+        debug("Invocation of callbacks for %s, seq %s: %d calls, %d failures",
+              name, seq_name, cbkstats->invocation_cnt_, cbkstats->failure_cnt_);
+    } else {
+        debug("Failure invoking callbacks for %s, seq %s",
+              name, seq_name);
+    }
+}
+
 static int
 get_handle(struct sshbuf *queue, int *hp)
 {
@@ -684,7 +698,7 @@ process_open(u_int32_t id)
 	u_int32_t pflags;
 	Attrib a;
 	char *name;
-	int r, handle, fd, flags, mode, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, handle, fd, flags, mode, status = SSH2_FX_FAILURE, replaced = 0;
 	struct cbk_attribs fileattrs;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
@@ -697,16 +711,20 @@ process_open(u_int32_t id)
 	mode = (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ? a.perm : 0666;
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
+
         set_cbk_attribs(
             &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
-        cbkcnt = call_open_file_plugins(
-	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE);
+        r = call_open_file_plugins(
+	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("open_file", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-	    cbkcnt = call_open_file_plugins(
-	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD);
+	    r = call_open_file_plugins(
+	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("open_file", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -736,8 +754,10 @@ process_open(u_int32_t id)
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
     if (call_plugins) {
-        cbkcnt = call_open_file_plugins(
-                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_open_file_plugins(
+                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("open_file", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
     free(name);
@@ -746,7 +766,7 @@ process_open(u_int32_t id)
 static void
 process_close(u_int32_t id)
 {
-	int r, handle, ret, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, handle, ret, status = SSH2_FX_FAILURE, replaced = 0;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -754,13 +774,17 @@ process_close(u_int32_t id)
 	debug3("request %u: close handle %u", id, handle);
 
     if (call_plugins) {
-        cbkcnt = call_close_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_close_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD);
+        r = call_close_plugins(
+                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("close", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_close_plugins(
+                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("close", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -771,8 +795,10 @@ process_close(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_close_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_close_plugins(
+                id, handle_to_name(handle), PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("close", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 }
 
@@ -781,7 +807,7 @@ process_read(u_int32_t id)
 {
 	u_char buf[64*1024];
 	u_int32_t len;
-	int r, handle, fd, ret, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, handle, fd, ret, status = SSH2_FX_FAILURE, replaced = 0;
 	u_int64_t off;
 
 	if ((r = get_handle(iqueue, &handle)) != 0 ||
@@ -793,13 +819,17 @@ process_read(u_int32_t id)
 	    id, handle_to_name(handle), handle, (unsigned long long)off, len);
 
     if (call_plugins) {
-        cbkcnt = call_read_plugins(
-                id, handle_to_name(handle), off, len, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_read_plugins(
-                id, handle_to_name(handle), off, len, PLUGIN_SEQ_INSTEAD);
+        r = call_read_plugins(
+                id, handle_to_name(handle), off, len, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("read", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_read_plugins(
+                id, handle_to_name(handle), off, len, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("read", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -831,8 +861,10 @@ process_read(u_int32_t id)
 		send_status(id, status);
 
     if (call_plugins) {
-    cbkcnt = call_read_plugins(
-                id, handle_to_name(handle), off, len, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_read_plugins(
+                id, handle_to_name(handle), off, len, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("read", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 }
@@ -842,7 +874,7 @@ process_write(u_int32_t id)
 {
 	u_int64_t off;
 	size_t len;
-	int r, handle, fd, ret, status, cbkcnt, replaced = 0;
+	int r, handle, fd, ret, status, replaced = 0;
 	u_char *data;
 
 	if ((r = get_handle(iqueue, &handle)) != 0 ||
@@ -854,13 +886,17 @@ process_write(u_int32_t id)
 	    id, handle_to_name(handle), handle, (unsigned long long)off, len);
 
     if (call_plugins) {
-        cbkcnt = call_write_plugins(
-                id, handle_to_name(handle), off, data, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_write_plugins(
-                id, handle_to_name(handle), off, data, PLUGIN_SEQ_INSTEAD);
+        r = call_write_plugins(
+                id, handle_to_name(handle), off, data, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("write", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_write_plugins(
+                id, handle_to_name(handle), off, data, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("write", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -895,8 +931,10 @@ process_write(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_write_plugins(
-                id, handle_to_name(handle), off, data, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+         r = call_write_plugins(
+                id, handle_to_name(handle), off, data, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("write", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(data);
@@ -908,7 +946,7 @@ process_do_stat(u_int32_t id, int do_lstat)
 	Attrib a;
 	struct stat st;
 	char *name;
-	int r, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, status = SSH2_FX_FAILURE, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -916,21 +954,27 @@ process_do_stat(u_int32_t id, int do_lstat)
 	debug3("request %u: %sstat", id, do_lstat ? "l" : "");
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
+
         if (do_lstat) {
-            cbkcnt = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_BEFORE);
+            r = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+            handle_log_plugin("lstat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-            cbkcnt = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_INSTEAD);
+            r = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+            handle_log_plugin("lstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
         } else {
-            cbkcnt = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_BEFORE);
+            r = call_stat_plugins(
+                id, name, 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+            handle_log_plugin("stat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-            cbkcnt = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_INSTEAD);
+            r = call_stat_plugins(
+                id, name, 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+            handle_log_plugin("stat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         }
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -949,12 +993,16 @@ process_do_stat(u_int32_t id, int do_lstat)
 		send_status(id, status);
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
+
         if (do_lstat) {
-            cbkcnt = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_AFTER);
+            r = call_lstat_plugins(
+                id, name, 0, PLUGIN_SEQ_AFTER, &cbkstats);
+            handle_log_plugin("lstat", PLUGIN_SEQ_AFTER, r, &cbkstats);
         } else {
-            cbkcnt = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_AFTER);
+            r = call_stat_plugins(
+                id, name, 0, PLUGIN_SEQ_AFTER, &cbkstats);
+            handle_log_plugin("stat", PLUGIN_SEQ_AFTER, r, &cbkstats);
         }
     }
 
@@ -978,7 +1026,7 @@ process_fstat(u_int32_t id)
 {
 	Attrib a;
 	struct stat st;
-	int fd, r, handle, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int fd, r, handle, status = SSH2_FX_FAILURE, replaced = 0;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -986,13 +1034,17 @@ process_fstat(u_int32_t id)
 	    id, handle_to_name(handle), handle);
 
     if (call_plugins) {
-        cbkcnt = call_fstat_plugins(
-                id, handle_to_name(handle), 0, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_fstat_plugins(
-                id, handle_to_name(handle), 0, PLUGIN_SEQ_INSTEAD);
+        r = call_fstat_plugins(
+                id, handle_to_name(handle), 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("fstat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_fstat_plugins(
+                id, handle_to_name(handle), 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("fstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1014,8 +1066,10 @@ process_fstat(u_int32_t id)
 		send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_fstat_plugins(
-                id, handle_to_name(handle), 0, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_fstat_plugins(
+                id, handle_to_name(handle), 0, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("fstat", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 }
@@ -1037,7 +1091,7 @@ process_setstat(u_int32_t id)
 {
 	Attrib a;
 	char *name;
-	int r, status = SSH2_FX_OK, cbkcnt, replaced = 0;
+	int r, status = SSH2_FX_OK, replaced = 0;
 	struct cbk_attribs fileattrs;
 
     if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
@@ -1047,16 +1101,20 @@ process_setstat(u_int32_t id)
 	debug("request %u: setstat name \"%s\"", id, name);
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
+
         set_cbk_attribs(
             &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
-        cbkcnt = call_setstat_plugins(
-                id, name, &fileattrs, PLUGIN_SEQ_BEFORE);
+        r = call_setstat_plugins(
+                id, name, &fileattrs, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("setstat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        cbkcnt = call_setstat_plugins(
-                id, name, &fileattrs, PLUGIN_SEQ_INSTEAD);
+        r = call_setstat_plugins(
+                id, name, &fileattrs, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("setstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1: 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1: 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1097,8 +1155,10 @@ process_setstat(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_setstat_plugins(
-                id, name, &fileattrs, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_setstat_plugins(
+                id, name, &fileattrs, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("setstat", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(name);
@@ -1108,7 +1168,7 @@ static void
 process_fsetstat(u_int32_t id)
 {
 	Attrib a;
-	int handle, fd, r, cbkcnt, replaced = 0;
+	int handle, fd, r, replaced = 0;
 	int status = SSH2_FX_OK;
 	struct cbk_attribs fileattrs;
 
@@ -1119,16 +1179,20 @@ process_fsetstat(u_int32_t id)
 	debug("request %u: fsetstat handle %d", id, handle);
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
+
         set_cbk_attribs(
             &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
-        cbkcnt = call_fsetstat_plugins(
-                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_BEFORE);
+        r = call_fsetstat_plugins(
+                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("fsetstat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        cbkcnt = call_fsetstat_plugins(
-                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_INSTEAD);
+        r = call_fsetstat_plugins(
+                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("fsetstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1188,8 +1252,10 @@ process_fsetstat(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_fsetstat_plugins(
-                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_fsetstat_plugins(
+                id, handle_to_name(handle), &fileattrs, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("fsetstat", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 }
 
@@ -1198,7 +1264,7 @@ process_opendir(u_int32_t id)
 {
 	DIR *dirp = NULL;
 	char *path;
-	int r, handle, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, handle, status = SSH2_FX_FAILURE, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1206,14 +1272,17 @@ process_opendir(u_int32_t id)
 	debug3("request %u: opendir", id);
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_open_dir_plugins(
-                id, path, PLUGIN_SEQ_BEFORE);
+        r = call_open_dir_plugins(
+                id, path, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("opendir", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        cbkcnt = call_open_dir_plugins(
-                id, path, PLUGIN_SEQ_INSTEAD);
+        r = call_open_dir_plugins(
+                id, path, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("opendir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1238,8 +1307,10 @@ process_opendir(u_int32_t id)
 		send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_open_dir_plugins(
-                id, path, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_open_dir_plugins(
+                id, path, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("opendir", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 	free(path);
 }
@@ -1250,7 +1321,7 @@ process_readdir(u_int32_t id)
 	DIR *dirp;
 	struct dirent *dp;
 	char *path;
-	int r, handle, cbkcnt, replaced = 0;
+	int r, handle, replaced = 0;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1259,13 +1330,17 @@ process_readdir(u_int32_t id)
 	    handle_to_name(handle), handle);
 
     if (call_plugins) {
-        cbkcnt = call_read_dir_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_read_dir_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD);
+        r = call_read_dir_plugins(
+                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("read_dir", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_read_dir_plugins(
+                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("read_dir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1314,8 +1389,10 @@ process_readdir(u_int32_t id)
     }
 
     if (call_plugins) {
-        cbkcnt = call_read_dir_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_read_dir_plugins(
+                id, handle_to_name(handle), PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("read_dir", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 }
 
@@ -1323,7 +1400,7 @@ static void
 process_remove(u_int32_t id)
 {
 	char *name;
-	int r, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, status = SSH2_FX_FAILURE, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1331,13 +1408,17 @@ process_remove(u_int32_t id)
 	debug3("request %u: remove", id);
 
     if (call_plugins) {
-        cbkcnt = call_remove_plugins(
-                id, name, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_remove_plugins(
-                id, name, PLUGIN_SEQ_INSTEAD);
+        r = call_remove_plugins(
+                id, name, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("remove", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_remove_plugins(
+                id, name, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("remove", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1351,8 +1432,10 @@ process_remove(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_remove_plugins(
-                id, name, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_remove_plugins(
+                id, name, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("remove", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(name);
@@ -1363,7 +1446,7 @@ process_mkdir(u_int32_t id)
 {
 	Attrib a;
 	char *name;
-	int r, mode, status = SSH2_FX_FAILURE, cbkcnt, replaced = 0;
+	int r, mode, status = SSH2_FX_FAILURE, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
 	    (r = decode_attrib(iqueue, &a)) != 0)
@@ -1374,13 +1457,17 @@ process_mkdir(u_int32_t id)
 	debug3("request %u: mkdir", id);
 
     if (call_plugins) {
-        cbkcnt = call_mkdir_plugins(
-                id, name, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_mkdir_plugins(
-                id, name, PLUGIN_SEQ_INSTEAD);
+        r = call_mkdir_plugins(
+                id, name, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("mkdir", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_mkdir_plugins(
+                id, name, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("mkdir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1394,8 +1481,10 @@ process_mkdir(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_mkdir_plugins(
-                id, name, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_mkdir_plugins(
+                id, name, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("mkdir", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(name);
@@ -1405,7 +1494,7 @@ static void
 process_rmdir(u_int32_t id)
 {
 	char *name;
-	int r, status, cbkcnt, replaced = 0;
+	int r, status, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1413,13 +1502,17 @@ process_rmdir(u_int32_t id)
 	debug3("request %u: rmdir", id);
 
     if (call_plugins) {
-        cbkcnt = call_rmdir_plugins(
-                id, name, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_rmdir_plugins(
-                id, name, PLUGIN_SEQ_INSTEAD);
+        r = call_rmdir_plugins(
+                id, name, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("rmdir", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_rmdir_plugins(
+                id, name, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("rmdir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1433,8 +1526,10 @@ process_rmdir(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_rmdir_plugins(
-                id, name, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_rmdir_plugins(
+                id, name, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("rmdir", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(name);
@@ -1445,7 +1540,7 @@ process_realpath(u_int32_t id)
 {
 	char resolvedname[PATH_MAX];
 	char *path;
-	int r, cbkcnt, replaced = 0;
+	int r, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1457,13 +1552,17 @@ process_realpath(u_int32_t id)
 	debug3("request %u: realpath", id);
 
     if (call_plugins) {
-        cbkcnt = call_realpath_plugins(
-                id, path, 0, "", PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_realpath_plugins(
-                id, path, 0, "", PLUGIN_SEQ_INSTEAD);
+        r = call_realpath_plugins(
+                id, path, 0, "", PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("realpath", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_realpath_plugins(
+                id, path, 0, "", PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("realpath", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1480,8 +1579,10 @@ process_realpath(u_int32_t id)
     }
 
     if (call_plugins) {
-        cbkcnt = call_realpath_plugins(
-                id, path, 0, "", PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_realpath_plugins(
+                id, path, 0, "", PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("realpath", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(path);
@@ -1491,7 +1592,7 @@ static void
 process_rename(u_int32_t id)
 {
 	char *oldpath, *newpath;
-	int r, status, cbkcnt, replaced = 0;
+	int r, status, replaced = 0;
 	struct stat sb;
 
 	if ((r = sshbuf_get_cstring(iqueue, &oldpath, NULL)) != 0 ||
@@ -1501,14 +1602,17 @@ process_rename(u_int32_t id)
 	debug3("request %u: rename", id);
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_rename_plugins(
-                id, oldpath, newpath, 0, PLUGIN_SEQ_BEFORE);
+        r = call_rename_plugins(
+                id, oldpath, newpath, 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("rename", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        cbkcnt = call_rename_plugins(
-                id, oldpath, newpath, 0, PLUGIN_SEQ_INSTEAD);
+        r = call_rename_plugins(
+                id, oldpath, newpath, 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("rename", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1561,8 +1665,10 @@ process_rename(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_rename_plugins(
-                id, oldpath, newpath, 0, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_rename_plugins(
+                id, oldpath, newpath, 0, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("rename", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(oldpath);
@@ -1572,7 +1678,7 @@ process_rename(u_int32_t id)
 static void
 process_readlink(u_int32_t id)
 {
-	int r, len, cbkcnt, replaced = 0;
+	int r, len, replaced = 0;
 	char buf[PATH_MAX];
 	char *path;
 
@@ -1582,13 +1688,17 @@ process_readlink(u_int32_t id)
 	debug3("request %u: readlink", id);
 
     if (call_plugins) {
-        cbkcnt = call_read_link_plugins(
-                id, path, PLUGIN_SEQ_BEFORE);
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_read_link_plugins(
-                id, path, PLUGIN_SEQ_INSTEAD);
+        r = call_read_link_plugins(
+                id, path, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("read_link", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        r = call_read_link_plugins(
+                id, path, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("read_link", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
+
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1607,8 +1717,10 @@ process_readlink(u_int32_t id)
     }
 
     if (call_plugins) {
-        cbkcnt = call_read_link_plugins(
-                id, path, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_read_link_plugins(
+                id, path, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("read_link", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(path);
@@ -1618,7 +1730,7 @@ static void
 process_symlink(u_int32_t id)
 {
 	char *oldpath, *newpath;
-	int r, status, cbkcnt, replaced = 0;
+	int r, status, replaced = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &oldpath, NULL)) != 0 ||
 	    (r = sshbuf_get_cstring(iqueue, &newpath, NULL)) != 0)
@@ -1627,14 +1739,17 @@ process_symlink(u_int32_t id)
 	debug3("request %u: symlink", id);
 
     if (call_plugins) {
+        struct callback_stats cbkstats;
 
-        cbkcnt = call_link_plugins(
-                id, oldpath, newpath, 1, PLUGIN_SEQ_BEFORE);
+        r = call_link_plugins(
+                id, oldpath, newpath, 1, PLUGIN_SEQ_BEFORE, &cbkstats);
+        handle_log_plugin("link", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        cbkcnt = call_link_plugins(
-                id, oldpath, newpath, 1, PLUGIN_SEQ_INSTEAD);
+        r = call_link_plugins(
+                id, oldpath, newpath, 1, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        handle_log_plugin("link", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
-        replaced = (cbkcnt > 0) ? 1 : 0;
+        replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -1649,8 +1764,10 @@ process_symlink(u_int32_t id)
 	send_status(id, status);
 
     if (call_plugins) {
-        cbkcnt = call_link_plugins(
-                id, oldpath, newpath, 1, PLUGIN_SEQ_AFTER);
+        struct callback_stats cbkstats;
+        r = call_link_plugins(
+                id, oldpath, newpath, 1, PLUGIN_SEQ_AFTER, &cbkstats);
+        handle_log_plugin("link", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
 	free(oldpath);
@@ -1971,7 +2088,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	}
 
 	log_init(__progname, log_level, log_facility, log_stderr);
-    sleep(15);
+
     if (call_plugins)
         sftp_plugins_init();
 
