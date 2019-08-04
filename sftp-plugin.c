@@ -108,7 +108,12 @@ static int load_plugin_conf(const char * confpath, struct sshbuf * fbuf)
       if ((len == linelen) || (*lpos == '#'))
          continue;
 
-      ++linecnt;
+      // Enforce limit on number of configured plugins
+      if (++linecnt > MAX_PLUGIN_CNT) {
+         perror(SFTP_PLUGIN_CONF);
+         exit(1);
+      }
+
       // Stash the line in our buffer
       if ((rc = sshbuf_put(fbuf, lpos, linelen-len)) != 0)
 			fatal("%s: buffer error", __func__);
