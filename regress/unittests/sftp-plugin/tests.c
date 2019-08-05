@@ -30,9 +30,11 @@ int main(int argc, char ** argv)
    }
    sshbuf_free(fbuf);
 
-   if (call_open_dir_plugins(1, "/test/path", PLUGIN_SEQ_BEFORE) < 0)
-      ++failures; 
-
+   {
+      struct callback_stats cbkstats;
+      if (call_open_dir_plugins(1, "/test/path", PLUGIN_SEQ_BEFORE, &cbkstats) < 0)
+         ++failures;
+   }
    sftp_plugins_release();
 
    if (!failures)
