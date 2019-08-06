@@ -340,9 +340,10 @@ int call_open_file_plugins(u_int32_t rqstid,
         u_int32_t flags,
         cbk_attribs_ptr attrs,
         enum PLUGIN_SEQUENCE seq,
+        int * fd,
         callback_stats * cbkstats)
 {
-   if (!cbkstats)
+   if (!cbkstats || !fd)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -353,7 +354,7 @@ int call_open_file_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_open_file != NULL)
       {
-         int rc = pplugin->callbacks_.cf_open_file(rqstid, filename, access, flags, attrs);
+         int rc = pplugin->callbacks_.cf_open_file(rqstid, filename, access, flags, attrs, fd);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;

@@ -717,46 +717,52 @@ process_open(u_int32_t id)
             &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
         r = call_open_file_plugins(
-	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE, &cbkstats);
+	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE, &fd, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
 	    r = call_open_file_plugins(
-	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD, &cbkstats);
+	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD, &fd, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS )) {
+           send_handle(id, fd);
+           status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
-	logit("open \"%s\" flags %s mode 0%o",
-	    name, string_from_portable(pflags), mode);
-	if (readonly &&
-	    ((flags & O_ACCMODE) != O_RDONLY ||
-	    (flags & (O_CREAT|O_TRUNC)) != 0)) {
-		verbose("Refusing open request in read-only mode");
-		status = SSH2_FX_PERMISSION_DENIED;
-	} else {
-		fd = open(name, flags, mode);
-		if (fd < 0) {
-			status = errno_to_portable(errno);
+		logit("open \"%s\" flags %s mode 0%o",
+		    name, string_from_portable(pflags), mode);
+		if (readonly &&
+		    ((flags & O_ACCMODE) != O_RDONLY ||
+		    (flags & (O_CREAT|O_TRUNC)) != 0)) {
+			verbose("Refusing open request in read-only mode");
+			status = SSH2_FX_PERMISSION_DENIED;
 		} else {
-			handle = handle_new(HANDLE_FILE, name, fd, flags, NULL);
-			if (handle < 0) {
-				close(fd);
+			fd = open(name, flags, mode);
+			if (fd < 0) {
+				status = errno_to_portable(errno);
 			} else {
-				send_handle(id, handle);
-				status = SSH2_FX_OK;
+				handle = handle_new(HANDLE_FILE, name, fd, flags, NULL);
+				if (handle < 0) {
+					close(fd);
+				} else {
+					send_handle(id, handle);
+					status = SSH2_FX_OK;
+				}
 			}
 		}
-	}
     }
 
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
+
     if (call_plugins) {
         struct callback_stats cbkstats;
+
         r = call_open_file_plugins(
-                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_AFTER, &fd, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
