@@ -717,11 +717,11 @@ process_open(u_int32_t id)
             &fileattrs, a.flags, a.size, a.uid, a.gid, a.perm, a.atime, a.mtime);
 
         r = call_open_file_plugins(
-	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_BEFORE, &fd, &cbkstats);
+	                id, name, mode, pflags, &fileattrs, &fd, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
 	    r = call_open_file_plugins(
-	                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_INSTEAD, &fd, &cbkstats);
+	                id, name, mode, pflags, &fileattrs, &fd, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
@@ -762,7 +762,7 @@ process_open(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_open_file_plugins(
-                id, name, mode, pflags, &fileattrs, PLUGIN_SEQ_AFTER, &fd, &cbkstats);
+                id, name, mode, pflags, &fileattrs, &fd, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
@@ -783,14 +783,17 @@ process_close(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_close_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, handle_to_name(handle), handle, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("close", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_close_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, handle_to_name(handle), handle, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("close", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS )) {
+           status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
@@ -803,7 +806,7 @@ process_close(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
         r = call_close_plugins(
-                id, handle_to_name(handle), PLUGIN_SEQ_AFTER, &cbkstats);
+                id, handle_to_name(handle), handle, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("close", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 }
