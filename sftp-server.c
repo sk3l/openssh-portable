@@ -831,39 +831,47 @@ process_read(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_read_plugins(
-                id, handle_to_name(handle), off, len, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, handle_to_name(handle), off, len, buf, &ret, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("read", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_read_plugins(
-                id, handle_to_name(handle), off, len, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, handle_to_name(handle), off, len, buf, &ret, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("read", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
-    }
-
-    if (!replaced) { // skip default logic if any INSTEAD plugins
-	if (len > sizeof buf) {
-		len = sizeof buf;
-		debug2("read change len %d", len);
-	}
-	fd = handle_to_fd(handle);
-	if (fd >= 0) {
-		if (lseek(fd, off, SEEK_SET) < 0) {
-			error("process_read: seek failed");
-			status = errno_to_portable(errno);
-		} else {
-			ret = read(fd, buf, len);
-			if (ret < 0) {
-				status = errno_to_portable(errno);
-			} else if (ret == 0) {
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+			if (ret == 0) {
 				status = SSH2_FX_EOF;
 			} else {
 				send_data(id, buf, ret);
 				status = SSH2_FX_OK;
-				handle_update_read(handle, ret);
+            }
+        }
+    }
+
+    if (!replaced) { // skip default logic if any INSTEAD plugins
+		if (len > sizeof buf) {
+			len = sizeof buf;
+			debug2("read change len %d", len);
+		}
+		fd = handle_to_fd(handle);
+		if (fd >= 0) {
+			if (lseek(fd, off, SEEK_SET) < 0) {
+				error("process_read: seek failed");
+				status = errno_to_portable(errno);
+			} else {
+				ret = read(fd, buf, len);
+				if (ret < 0) {
+					status = errno_to_portable(errno);
+				} else if (ret == 0) {
+					status = SSH2_FX_EOF;
+				} else {
+					send_data(id, buf, ret);
+					status = SSH2_FX_OK;
+					handle_update_read(handle, ret);
+				}
 			}
 		}
-	}
     }
 
 	if (status != SSH2_FX_OK)
@@ -872,7 +880,7 @@ process_read(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
         r = call_read_plugins(
-                id, handle_to_name(handle), off, len, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, handle_to_name(handle), off, len, buf, &ret, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("read", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 

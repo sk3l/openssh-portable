@@ -418,10 +418,12 @@ int call_read_plugins(u_int32_t rqstid,
         const char * handle,
         u_int64_t offset,
         u_int32_t length,
+        u_char * data,
+        int * dlen,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
-   if (!cbkstats)
+   if (!cbkstats || !data || !dlen)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -432,7 +434,7 @@ int call_read_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_read != NULL)
       {
-         int rc = pplugin->callbacks_.cf_read(rqstid, handle, offset, length);
+         int rc = pplugin->callbacks_.cf_read(rqstid, handle, offset, length, data, dlen);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
