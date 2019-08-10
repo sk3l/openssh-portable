@@ -52,7 +52,7 @@ int call_open_dir_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callbac
 int call_close_plugins(u_int32_t, const char *, int, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_read_plugins(u_int32_t, const char *, u_int64_t, u_int32_t, u_char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_read_dir_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
-int call_write_plugins(u_int32_t, const char *, u_int64_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_write_plugins(u_int32_t, const char *, u_int64_t, u_int32_t, u_char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_remove_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_rename_plugins(u_int32_t, const char *, const char *, u_int32_t, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_mkdir_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);

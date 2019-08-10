@@ -471,7 +471,9 @@ int call_read_dir_plugins(u_int32_t rqstid,
 int call_write_plugins(u_int32_t rqstid,
         const char * handle,
         u_int64_t offset,
-        const char * data,
+        u_int32_t length,
+        u_char * data,
+        int * dlen,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -486,7 +488,7 @@ int call_write_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_write != NULL)
       {
-         int rc = pplugin->callbacks_.cf_write(rqstid, handle, offset, data);
+         int rc = pplugin->callbacks_.cf_write(rqstid, handle, offset, length, data, dlen);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;

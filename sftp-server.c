@@ -906,42 +906,47 @@ process_write(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_write_plugins(
-                id, handle_to_name(handle), off, data, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, handle_to_name(handle), off, len, data, &ret, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("write", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_write_plugins(
-                id, handle_to_name(handle), off, data, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, handle_to_name(handle), off, len, data, &ret, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("write", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+            if ((size_t)ret == len) {
+				status = SSH2_FX_OK;
+            }
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	fd = handle_to_fd(handle);
+		fd = handle_to_fd(handle);
 
-	if (fd < 0)
-		status = SSH2_FX_FAILURE;
-	else {
-		if (!(handle_to_flags(handle) & O_APPEND) &&
-				lseek(fd, off, SEEK_SET) < 0) {
-			status = errno_to_portable(errno);
-			error("process_write: seek failed");
-		} else {
-/* XXX ATOMICIO ? */
-			ret = write(fd, data, len);
-			if (ret < 0) {
-				error("process_write: write failed");
+		if (fd < 0)
+			status = SSH2_FX_FAILURE;
+		else {
+			if (!(handle_to_flags(handle) & O_APPEND) &&
+					lseek(fd, off, SEEK_SET) < 0) {
 				status = errno_to_portable(errno);
-			} else if ((size_t)ret == len) {
-				status = SSH2_FX_OK;
-				handle_update_write(handle, ret);
+				error("process_write: seek failed");
 			} else {
-				debug2("nothing at all written");
-				status = SSH2_FX_FAILURE;
+	/* XXX ATOMICIO ? */
+				ret = write(fd, data, len);
+				if (ret < 0) {
+					error("process_write: write failed");
+					status = errno_to_portable(errno);
+				} else if ((size_t)ret == len) {
+					status = SSH2_FX_OK;
+					handle_update_write(handle, ret);
+				} else {
+					debug2("nothing at all written");
+					status = SSH2_FX_FAILURE;
+				}
 			}
 		}
-	}
 
     }
 
@@ -950,7 +955,7 @@ process_write(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
          r = call_write_plugins(
-                id, handle_to_name(handle), off, data, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, handle_to_name(handle), off, len, data, &ret, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("write", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
