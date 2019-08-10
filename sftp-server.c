@@ -1297,32 +1297,36 @@ process_opendir(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_open_dir_plugins(
-                id, path, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, path, &handle, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("opendir", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_open_dir_plugins(
-                id, path, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, path, &handle, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("opendir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+       	    send_handle(id, handle);
+			status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	logit("opendir \"%s\"", path);
-	dirp = opendir(path);
-	if (dirp == NULL) {
-		status = errno_to_portable(errno);
-	} else {
-		handle = handle_new(HANDLE_DIR, path, 0, 0, dirp);
-		if (handle < 0) {
-			closedir(dirp);
+		logit("opendir \"%s\"", path);
+		dirp = opendir(path);
+		if (dirp == NULL) {
+			status = errno_to_portable(errno);
 		} else {
-			send_handle(id, handle);
-			status = SSH2_FX_OK;
-		}
+			handle = handle_new(HANDLE_DIR, path, 0, 0, dirp);
+			if (handle < 0) {
+				closedir(dirp);
+			} else {
+				send_handle(id, handle);
+				status = SSH2_FX_OK;
+			}
 
-	}
+		}
     }
 
 	if (status != SSH2_FX_OK)
@@ -1331,7 +1335,7 @@ process_opendir(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
         r = call_open_dir_plugins(
-                id, path, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, path, &handle, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("opendir", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 	free(path);
