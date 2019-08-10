@@ -336,14 +336,14 @@ int get_plugins(Plugin ** pplugins, size_t * cnt)
  */
 int call_open_file_plugins(u_int32_t rqstid,
         const char * filename,
+        int * handle,
         u_int32_t access,
         u_int32_t flags,
         cbk_attribs_ptr attrs,
-        int * fd,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
-   if (!cbkstats || !fd)
+   if (!cbkstats)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -354,7 +354,7 @@ int call_open_file_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_open_file != NULL)
       {
-         int rc = pplugin->callbacks_.cf_open_file(rqstid, filename, access, flags, attrs, fd);
+         int rc = pplugin->callbacks_.cf_open_file(rqstid, filename, handle, access, flags, attrs);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
@@ -389,8 +389,8 @@ int call_open_dir_plugins(u_int32_t rqstid,
 }
 
 int call_close_plugins(u_int32_t rqstid,
-        const char * handle,
-        int fd,
+        const char * filename,
+        int handle,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -405,7 +405,7 @@ int call_close_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_close != NULL)
       {
-         int rc = pplugin->callbacks_.cf_close(rqstid, handle, fd);
+         int rc = pplugin->callbacks_.cf_close(rqstid, filename, handle);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
@@ -416,6 +416,7 @@ int call_close_plugins(u_int32_t rqstid,
 
 int call_read_plugins(u_int32_t rqstid,
         const char * handle,
+        int fd,
         u_int64_t offset,
         u_int32_t length,
         u_char * data,
@@ -434,7 +435,7 @@ int call_read_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_read != NULL)
       {
-         int rc = pplugin->callbacks_.cf_read(rqstid, handle, offset, length, data, dlen);
+         int rc = pplugin->callbacks_.cf_read(rqstid, handle, fd, offset, length, data, dlen);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
@@ -470,6 +471,7 @@ int call_read_dir_plugins(u_int32_t rqstid,
 
 int call_write_plugins(u_int32_t rqstid,
         const char * handle,
+        int fd,
         u_int64_t offset,
         u_int32_t length,
         u_char * data,
@@ -488,7 +490,7 @@ int call_write_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_write != NULL)
       {
-         int rc = pplugin->callbacks_.cf_write(rqstid, handle, offset, length, data, dlen);
+         int rc = pplugin->callbacks_.cf_write(rqstid, handle, fd, offset, length, data, dlen);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;

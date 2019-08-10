@@ -20,12 +20,12 @@ void set_cbk_attribs(
     cbk_attribs_ptr, u_int32_t, u_int64_t, u_int32_t, u_int32_t, u_int32_t,u_int32_t, u_int32_t);
 
 /* Request callback functions */
-typedef int (*sftp_cbk_open_file)(u_int32_t, const char *, u_int32_t, u_int32_t, cbk_attribs_ptr, int *);
+typedef int (*sftp_cbk_open_file)(u_int32_t, const char *, int *, u_int32_t, u_int32_t, cbk_attribs_ptr);
 typedef int (*sftp_cbk_open_dir) (u_int32_t, const char *);
 typedef int (*sftp_cbk_close)    (u_int32_t, const char *, int);
-typedef int (*sftp_cbk_read)     (u_int32_t, const char *, u_int64_t, u_int32_t, u_char *, int *);
+typedef int (*sftp_cbk_read)     (u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *);
 typedef int (*sftp_cbk_read_dir) (u_int32_t, const char *);
-typedef int (*sftp_cbk_write)    (u_int32_t, const char *, u_int64_t, u_int32_t, u_char *, int *);
+typedef int (*sftp_cbk_write)    (u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *);
 typedef int (*sftp_cbk_remove)   (u_int32_t, const char *);
 typedef int (*sftp_cbk_rename)   (u_int32_t, const char *, const char *, u_int32_t);
 typedef int (*sftp_cbk_mkdir)    (u_int32_t, const char *);
