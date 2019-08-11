@@ -1530,14 +1530,15 @@ process_rmdir(u_int32_t id)
         handle_log_plugin("rmdir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+            status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
-
-	logit("rmdir name \"%s\"", name);
-	r = rmdir(name);
-	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-
+        logit("rmdir name \"%s\"", name);
+        r = rmdir(name);
+        status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
     }
 
 	send_status(id, status);
