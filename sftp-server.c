@@ -1476,22 +1476,23 @@ process_mkdir(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_mkdir_plugins(
-                id, name, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("mkdir", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_mkdir_plugins(
-                id, name, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("mkdir", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+            status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
-
-	logit("mkdir name \"%s\" mode 0%o", name, mode);
-	r = mkdir(name, mode);
-	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
-
+        logit("mkdir name \"%s\" mode 0%o", name, mode);
+        r = mkdir(name, mode);
+        status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
     }
 
 	send_status(id, status);
@@ -1499,7 +1500,7 @@ process_mkdir(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
         r = call_mkdir_plugins(
-                id, name, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("mkdir", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 

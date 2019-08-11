@@ -556,10 +556,11 @@ int call_rename_plugins(u_int32_t rqstid,
 
 int call_mkdir_plugins(u_int32_t rqstid,
         const char * path,
+        Attrib * attrib,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
-   if (!cbkstats)
+   if (!cbkstats || !attrib)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -570,7 +571,7 @@ int call_mkdir_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_mkdir != NULL)
       {
-         int rc = pplugin->callbacks_.cf_mkdir(rqstid, path);
+         int rc = pplugin->callbacks_.cf_mkdir(rqstid, path, attrib);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
