@@ -49,6 +49,18 @@
 #include "sftp.h"
 #include "sftp-common.h"
 
+void
+free_stat_list(StatList *s)
+{
+    if (s && s->stats && s->count > 0) {
+        for (size_t i = 0; i < s->count; i++) {
+	        free(s->stats[i].name);
+			free(s->stats[i].long_name);
+	    }
+        free(s->stats);
+    }
+}
+
 /* Clear contents of attributes structure */
 void
 attrib_clear(Attrib *a)

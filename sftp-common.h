@@ -25,11 +25,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef SFTP_COMMON_H
+#define SFTP_COMMON_H
+
+#include <sys/types.h>
+#include <sys/stat.h>
 /* Maximum packet that we are willing to send/accept */
 #define SFTP_MAX_MSG_LENGTH	(256 * 1024)
 
 struct sshbuf;
-typedef struct Attrib Attrib;
 
 /* File attributes */
 struct Attrib {
@@ -41,6 +45,23 @@ struct Attrib {
 	u_int32_t	atime;
 	u_int32_t	mtime;
 };
+typedef struct Attrib Attrib;
+
+/* portable attributes, etc. */
+
+struct Stat {
+	char *name;
+	char *long_name;
+	Attrib attrib;
+};
+typedef struct Stat Stat;
+
+struct StatList {
+    Stat * stats;
+    size_t count;
+};
+typedef struct StatList StatList;
+void free_stat_list(StatList *);
 
 void	 attrib_clear(Attrib *);
 void	 stat_to_attrib(const struct stat *, Attrib *);
@@ -50,3 +71,5 @@ int	 encode_attrib(struct sshbuf *, const Attrib *);
 char	*ls_file(const char *, const struct stat *, int, int);
 
 const char *fx2txt(int);
+
+#endif

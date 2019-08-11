@@ -32,7 +32,7 @@ static const char * SFTP_CALLBACK_SYM [] = {
     "sftp_cf_name",
     "sftp_cf_attrs"
 };
-
+/*
 void set_cbk_attribs(
     cbk_attribs_ptr attrs,
     u_int32_t flags,
@@ -53,7 +53,7 @@ void set_cbk_attribs(
         attrs->mtime = mtime;
     }
 }
-
+*/
 
 const char * get_sftp_callback_sym(enum SFTP_CALLBACK_FUNC scf)
 {

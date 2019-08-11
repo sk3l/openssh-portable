@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+#include "sftp-common.h"
 #include "sftp-callback.h"
 
 #define MAX_CALLBACK_IDX SSH2_FXP_EXTENDED_REPLY
@@ -47,11 +48,11 @@ int sftp_plugins_release();
 int get_plugins(Plugin ** plugins, size_t * cnt);
 
 // Methods for invocation of SFTP plugin methods
-int call_open_file_plugins(u_int32_t, const char *, int *, u_int32_t, u_int32_t, cbk_attribs_ptr, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_open_file_plugins(u_int32_t, const char *, int *, u_int32_t, u_int32_t, Attrib *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_open_dir_plugins(u_int32_t, const char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_close_plugins(u_int32_t, const char *, int, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_read_plugins(u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
-int call_read_dir_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_read_dir_plugins(u_int32_t, const char *, StatList *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_write_plugins(u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_remove_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_rename_plugins(u_int32_t, const char *, const char *, u_int32_t, enum PLUGIN_SEQUENCE, callback_stats *);
@@ -60,8 +61,8 @@ int call_rmdir_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_s
 int call_stat_plugins(u_int32_t, const char *, u_int32_t, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_lstat_plugins(u_int32_t, const char *, u_int32_t, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_fstat_plugins(u_int32_t, const char *, u_int32_t, enum PLUGIN_SEQUENCE, callback_stats *);
-int call_setstat_plugins(u_int32_t, const char *, cbk_attribs_ptr, enum PLUGIN_SEQUENCE, callback_stats *);
-int call_fsetstat_plugins(u_int32_t, const char *, cbk_attribs_ptr, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_setstat_plugins(u_int32_t, const char *, Attrib *, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_fsetstat_plugins(u_int32_t, const char *, Attrib *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_read_link_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_link_plugins(u_int32_t, const char *, const char *, int, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_lock_plugins(u_int32_t, const char *, u_int64_t, u_int64_t,int, enum PLUGIN_SEQUENCE, callback_stats *);

@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include "sshbuf.h"
+#include "sftp-common.h"
 #include "sftp-plugin.h"
 
 #include "log.h"
@@ -339,7 +340,7 @@ int call_open_file_plugins(u_int32_t rqstid,
         int * handle,
         u_int32_t access,
         u_int32_t flags,
-        cbk_attribs_ptr attrs,
+        Attrib * attrs,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -447,10 +448,11 @@ int call_read_plugins(u_int32_t rqstid,
 
 int call_read_dir_plugins(u_int32_t rqstid,
         const char * handle,
+        StatList * stats,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
-   if (!cbkstats)
+   if (!cbkstats || !stats)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -461,7 +463,7 @@ int call_read_dir_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_read_dir != NULL)
       {
-         int rc = pplugin->callbacks_.cf_read_dir(rqstid, handle);
+         int rc = pplugin->callbacks_.cf_read_dir(rqstid, handle, stats);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
@@ -682,7 +684,7 @@ int call_fstat_plugins(u_int32_t rqstid,
 
 int call_setstat_plugins(u_int32_t rqstid,
         const char * path,
-        cbk_attribs_ptr attrs,
+        Attrib * attrs,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -708,7 +710,7 @@ int call_setstat_plugins(u_int32_t rqstid,
 
 int call_fsetstat_plugins(u_int32_t rqstid,
         const char * handle,
-        cbk_attribs_ptr attrs,
+        Attrib * attrs,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
