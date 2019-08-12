@@ -1128,41 +1128,44 @@ process_setstat(u_int32_t id)
         handle_log_plugin("setstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1: 0;
+        if (replaced && (r != PLUGIN_CBK_SUCCESS)) {
+            status = SSH2_FX_FAILURE;
+        } 
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
-		logit("set \"%s\" size %llu",
-		    name, (unsigned long long)a.size);
-		r = truncate(name, a.size);
-		if (r == -1)
-			status = errno_to_portable(errno);
-	}
-	if (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) {
-		logit("set \"%s\" mode %04o", name, a.perm);
-		r = chmod(name, a.perm & 07777);
-		if (r == -1)
-			status = errno_to_portable(errno);
-	}
-	if (a.flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
-		char buf[64];
-		time_t t = a.mtime;
-
-		strftime(buf, sizeof(buf), "%Y%m%d-%H:%M:%S",
-		    localtime(&t));
-		logit("set \"%s\" modtime %s", name, buf);
-		r = utimes(name, attrib_to_tv(&a));
-		if (r == -1)
-			status = errno_to_portable(errno);
-	}
-	if (a.flags & SSH2_FILEXFER_ATTR_UIDGID) {
-		logit("set \"%s\" owner %lu group %lu", name,
-		    (u_long)a.uid, (u_long)a.gid);
-		r = chown(name, a.uid, a.gid);
-		if (r == -1)
-			status = errno_to_portable(errno);
-	}
+		if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
+			logit("set \"%s\" size %llu",
+			    name, (unsigned long long)a.size);
+			r = truncate(name, a.size);
+			if (r == -1)
+				status = errno_to_portable(errno);
+		}
+		if (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) {
+			logit("set \"%s\" mode %04o", name, a.perm);
+			r = chmod(name, a.perm & 07777);
+			if (r == -1)
+				status = errno_to_portable(errno);
+		}
+		if (a.flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
+			char buf[64];
+			time_t t = a.mtime;
+	
+			strftime(buf, sizeof(buf), "%Y%m%d-%H:%M:%S",
+			    localtime(&t));
+			logit("set \"%s\" modtime %s", name, buf);
+			r = utimes(name, attrib_to_tv(&a));
+			if (r == -1)
+				status = errno_to_portable(errno);
+		}
+		if (a.flags & SSH2_FILEXFER_ATTR_UIDGID) {
+			logit("set \"%s\" owner %lu group %lu", name,
+			    (u_long)a.uid, (u_long)a.gid);
+			r = chown(name, a.uid, a.gid);
+			if (r == -1)
+				status = errno_to_portable(errno);
+		}
     }
 
 	send_status(id, status);
@@ -1202,60 +1205,63 @@ process_fsetstat(u_int32_t id)
         handle_log_plugin("fsetstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r != PLUGIN_CBK_SUCCESS)) {
+            status = SSH2_FX_FAILURE;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	fd = handle_to_fd(handle);
-	if (fd < 0)
-		status = SSH2_FX_FAILURE;
-	else {
-		char *name = handle_to_name(handle);
-
-		if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
-			logit("set \"%s\" size %llu",
-			    name, (unsigned long long)a.size);
-			r = ftruncate(fd, a.size);
-			if (r == -1)
-				status = errno_to_portable(errno);
-		}
-		if (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) {
-			logit("set \"%s\" mode %04o", name, a.perm);
+		fd = handle_to_fd(handle);
+		if (fd < 0)
+			status = SSH2_FX_FAILURE;
+		else {
+			char *name = handle_to_name(handle);
+	
+			if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
+				logit("set \"%s\" size %llu",
+				    name, (unsigned long long)a.size);
+				r = ftruncate(fd, a.size);
+				if (r == -1)
+					status = errno_to_portable(errno);
+			}
+			if (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) {
+				logit("set \"%s\" mode %04o", name, a.perm);
 #ifdef HAVE_FCHMOD
-			r = fchmod(fd, a.perm & 07777);
+				r = fchmod(fd, a.perm & 07777);
 #else
-			r = chmod(name, a.perm & 07777);
+				r = chmod(name, a.perm & 07777);
 #endif
-			if (r == -1)
-				status = errno_to_portable(errno);
-		}
-		if (a.flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
-			char buf[64];
-			time_t t = a.mtime;
-
-			strftime(buf, sizeof(buf), "%Y%m%d-%H:%M:%S",
-			    localtime(&t));
-			logit("set \"%s\" modtime %s", name, buf);
+				if (r == -1)
+					status = errno_to_portable(errno);
+			}
+			if (a.flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
+				char buf[64];
+				time_t t = a.mtime;
+	
+				strftime(buf, sizeof(buf), "%Y%m%d-%H:%M:%S",
+				    localtime(&t));
+				logit("set \"%s\" modtime %s", name, buf);
 #ifdef HAVE_FUTIMES
-			r = futimes(fd, attrib_to_tv(&a));
+				r = futimes(fd, attrib_to_tv(&a));
 #else
-			r = utimes(name, attrib_to_tv(&a));
+				r = utimes(name, attrib_to_tv(&a));
 #endif
-			if (r == -1)
-				status = errno_to_portable(errno);
-		}
-		if (a.flags & SSH2_FILEXFER_ATTR_UIDGID) {
-			logit("set \"%s\" owner %lu group %lu", name,
-			    (u_long)a.uid, (u_long)a.gid);
+				if (r == -1)
+					status = errno_to_portable(errno);
+			}
+			if (a.flags & SSH2_FILEXFER_ATTR_UIDGID) {
+				logit("set \"%s\" owner %lu group %lu", name,
+				    (u_long)a.uid, (u_long)a.gid);
 #ifdef HAVE_FCHOWN
-			r = fchown(fd, a.uid, a.gid);
+				r = fchown(fd, a.uid, a.gid);
 #else
-			r = chown(name, a.uid, a.gid);
+				r = chown(name, a.uid, a.gid);
 #endif
-			if (r == -1)
-				status = errno_to_portable(errno);
+				if (r == -1)
+					status = errno_to_portable(errno);
+			}
 		}
-	}
     }
 
 	send_status(id, status);
