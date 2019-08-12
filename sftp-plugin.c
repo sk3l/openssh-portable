@@ -607,11 +607,11 @@ int call_rmdir_plugins(u_int32_t rqstid,
 
 int call_stat_plugins(u_int32_t rqstid,
         const char * path,
-        u_int32_t flags,
+        Attrib * attrib,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
-   if (!cbkstats)
+   if (!cbkstats || !attrib)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -622,7 +622,7 @@ int call_stat_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_stat != NULL)
       {
-         int rc = pplugin->callbacks_.cf_stat(rqstid, path, flags);
+         int rc = pplugin->callbacks_.cf_stat(rqstid, path, attrib);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
@@ -633,11 +633,11 @@ int call_stat_plugins(u_int32_t rqstid,
 
 int call_lstat_plugins(u_int32_t rqstid,
         const char * path,
-        u_int32_t flags,
+        Attrib * attrib,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
-   if (!cbkstats)
+   if (!cbkstats || !attrib)
       return PLUGIN_CBK_FAILURE;
 
    cbkstats->invocation_cnt_ = 0;
@@ -648,7 +648,7 @@ int call_lstat_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_lstat != NULL)
       {
-         int rc = pplugin->callbacks_.cf_lstat(rqstid, path, flags);
+         int rc = pplugin->callbacks_.cf_lstat(rqstid, path, attrib);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
@@ -659,7 +659,7 @@ int call_lstat_plugins(u_int32_t rqstid,
 
 int call_fstat_plugins(u_int32_t rqstid,
         const char * handle,
-        u_int32_t flags,
+        Attrib * attrib,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -674,7 +674,7 @@ int call_fstat_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_fstat != NULL)
       {
-         int rc = pplugin->callbacks_.cf_fstat(rqstid, handle, flags);
+         int rc = pplugin->callbacks_.cf_fstat(rqstid, handle, attrib);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;

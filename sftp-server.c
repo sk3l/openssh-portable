@@ -967,35 +967,39 @@ process_do_stat(u_int32_t id, int do_lstat)
 
         if (do_lstat) {
             r = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_BEFORE, &cbkstats);
             handle_log_plugin("lstat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
             r = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_INSTEAD, &cbkstats);
             handle_log_plugin("lstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
         } else {
             r = call_stat_plugins(
-                id, name, 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_BEFORE, &cbkstats);
             handle_log_plugin("stat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
             r = call_stat_plugins(
-                id, name, 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_INSTEAD, &cbkstats);
             handle_log_plugin("stat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         }
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+			send_attrib(id, &a);
+			status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
-	verbose("%sstat name \"%s\"", do_lstat ? "l" : "", name);
-	r = do_lstat ? lstat(name, &st) : stat(name, &st);
-	if (r < 0) {
-		status = errno_to_portable(errno);
-	} else {
-		stat_to_attrib(&st, &a);
-		send_attrib(id, &a);
-		status = SSH2_FX_OK;
-	}
+		verbose("%sstat name \"%s\"", do_lstat ? "l" : "", name);
+		r = do_lstat ? lstat(name, &st) : stat(name, &st);
+		if (r < 0) {
+			status = errno_to_portable(errno);
+		} else {
+			stat_to_attrib(&st, &a);
+			send_attrib(id, &a);
+			status = SSH2_FX_OK;
+		}
     }
 
 	if (status != SSH2_FX_OK)
@@ -1006,11 +1010,11 @@ process_do_stat(u_int32_t id, int do_lstat)
 
         if (do_lstat) {
             r = call_lstat_plugins(
-                id, name, 0, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_AFTER, &cbkstats);
             handle_log_plugin("lstat", PLUGIN_SEQ_AFTER, r, &cbkstats);
         } else {
             r = call_stat_plugins(
-                id, name, 0, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, name, &a, PLUGIN_SEQ_AFTER, &cbkstats);
             handle_log_plugin("stat", PLUGIN_SEQ_AFTER, r, &cbkstats);
         }
     }
@@ -1046,29 +1050,33 @@ process_fstat(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_fstat_plugins(
-                id, handle_to_name(handle), 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, handle_to_name(handle), &a, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("fstat", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_fstat_plugins(
-                id, handle_to_name(handle), 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, handle_to_name(handle), &a, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("fstat", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+		    send_attrib(id, &a);
+		    status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	fd = handle_to_fd(handle);
-	if (fd >= 0) {
-		r = fstat(fd, &st);
-		if (r < 0) {
-			status = errno_to_portable(errno);
-		} else {
-			stat_to_attrib(&st, &a);
-			send_attrib(id, &a);
-			status = SSH2_FX_OK;
+		fd = handle_to_fd(handle);
+		if (fd >= 0) {
+			r = fstat(fd, &st);
+			if (r < 0) {
+				status = errno_to_portable(errno);
+			} else {
+				stat_to_attrib(&st, &a);
+				send_attrib(id, &a);
+				status = SSH2_FX_OK;
+			}
 		}
-	}
     }
 
 	if (status != SSH2_FX_OK)
@@ -1077,7 +1085,7 @@ process_fstat(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
         r = call_fstat_plugins(
-                id, handle_to_name(handle), 0, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, handle_to_name(handle), &a, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("fstat", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 
