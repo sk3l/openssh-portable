@@ -55,6 +55,7 @@ struct Stat {
 	Attrib attrib;
 };
 typedef struct Stat Stat;
+void free_stat(Stat *);
 
 struct StatList {
     Stat * stats;

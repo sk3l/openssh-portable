@@ -1578,37 +1578,44 @@ process_realpath(u_int32_t id)
 	debug3("request %u: realpath", id);
 
     if (call_plugins) {
+        Stat s;
         struct callback_stats cbkstats;
 
         r = call_realpath_plugins(
-                id, path, 0, "", PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, path, &s, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("realpath", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_realpath_plugins(
-                id, path, 0, "", PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, path, &s, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("realpath", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+			send_names(id, 1, &s);
+        }
+        free_stat(&s);
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	verbose("realpath \"%s\"", path);
-	if (realpath(path, resolvedname) == NULL) {
-		send_status(id, errno_to_portable(errno));
-	} else {
-		Stat s;
-		attrib_clear(&s.attrib);
-		s.name = s.long_name = resolvedname;
-		send_names(id, 1, &s);
-	}
+		verbose("realpath \"%s\"", path);
+		if (realpath(path, resolvedname) == NULL) {
+			send_status(id, errno_to_portable(errno));
+		} else {
+			Stat s;
+			attrib_clear(&s.attrib);
+			s.name = s.long_name = resolvedname;
+			send_names(id, 1, &s);
+		}
     }
 
     if (call_plugins) {
+        Stat s;
         struct callback_stats cbkstats;
         r = call_realpath_plugins(
-                id, path, 0, "", PLUGIN_SEQ_AFTER, &cbkstats);
+                id, path, &s, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("realpath", PLUGIN_SEQ_AFTER, r, &cbkstats);
+        free_stat(&s);
     }
 
 	free(path);

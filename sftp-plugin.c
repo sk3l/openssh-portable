@@ -844,8 +844,7 @@ int call_unlock_plugins(u_int32_t rqstid,
 
 int call_realpath_plugins(u_int32_t rqstid,
         const char * origpath,
-        u_int8_t ctlbyte,
-        const char * path,
+        Stat * stat,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -860,7 +859,7 @@ int call_realpath_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_realpath != NULL)
       {
-         int rc = pplugin->callbacks_.cf_realpath(rqstid, origpath, ctlbyte, path);
+         int rc = pplugin->callbacks_.cf_realpath(rqstid, origpath, stat);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;

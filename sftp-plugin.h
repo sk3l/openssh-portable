@@ -67,6 +67,6 @@ int call_read_link_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callba
 int call_link_plugins(u_int32_t, const char *, const char *, int, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_lock_plugins(u_int32_t, const char *, u_int64_t, u_int64_t,int, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_unlock_plugins(u_int32_t, const char *, u_int64_t, u_int64_t, enum PLUGIN_SEQUENCE, callback_stats *);
-int call_realpath_plugins(u_int32_t, const char *, u_int8_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_realpath_plugins(u_int32_t, const char *, Stat *, enum PLUGIN_SEQUENCE, callback_stats *);
 
 #endif

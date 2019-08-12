@@ -50,6 +50,15 @@
 #include "sftp-common.h"
 
 void
+free_stat(Stat *s)
+{
+    if (s) {
+	    free(s->name);
+		free(s->long_name);
+    }
+}
+
+void
 free_stat_list(StatList *s)
 {
     if (s && s->stats && s->count > 0) {
