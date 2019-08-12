@@ -1644,61 +1644,64 @@ process_rename(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_rename_plugins(
-                id, oldpath, newpath, 0, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, oldpath, newpath, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("rename", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_rename_plugins(
-                id, oldpath, newpath, 0, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, oldpath, newpath, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("rename", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+			status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	logit("rename old \"%s\" new \"%s\"", oldpath, newpath);
-	status = SSH2_FX_FAILURE;
-	if (lstat(oldpath, &sb) == -1)
-		status = errno_to_portable(errno);
-	else if (S_ISREG(sb.st_mode)) {
-		/* Race-free rename of regular files */
-		if (link(oldpath, newpath) == -1) {
-			if (errno == EOPNOTSUPP || errno == ENOSYS
+		logit("rename old \"%s\" new \"%s\"", oldpath, newpath);
+		status = SSH2_FX_FAILURE;
+		if (lstat(oldpath, &sb) == -1)
+			status = errno_to_portable(errno);
+		else if (S_ISREG(sb.st_mode)) {
+			/* Race-free rename of regular files */
+			if (link(oldpath, newpath) == -1) {
+				if (errno == EOPNOTSUPP || errno == ENOSYS
 #ifdef EXDEV
-			    || errno == EXDEV
+				    || errno == EXDEV
 #endif
 #ifdef LINK_OPNOTSUPP_ERRNO
-			    || errno == LINK_OPNOTSUPP_ERRNO
+				    || errno == LINK_OPNOTSUPP_ERRNO
 #endif
-			    ) {
-				struct stat st;
-
-				/*
-				 * fs doesn't support links, so fall back to
-				 * stat+rename.  This is racy.
-				 */
-				if (stat(newpath, &st) == -1) {
-					if (rename(oldpath, newpath) == -1)
-						status =
-						    errno_to_portable(errno);
-					else
-						status = SSH2_FX_OK;
+				    ) {
+					struct stat st;
+	
+					/*
+					 * fs doesn't support links, so fall back to
+					 * stat+rename.  This is racy.
+					 */
+					if (stat(newpath, &st) == -1) {
+						if (rename(oldpath, newpath) == -1)
+							status =
+							    errno_to_portable(errno);
+						else
+							status = SSH2_FX_OK;
+					}
+				} else {
+					status = errno_to_portable(errno);
 				}
-			} else {
+			} else if (unlink(oldpath) == -1) {
 				status = errno_to_portable(errno);
-			}
-		} else if (unlink(oldpath) == -1) {
-			status = errno_to_portable(errno);
-			/* clean spare link */
-			unlink(newpath);
-		} else
-			status = SSH2_FX_OK;
-	} else if (stat(newpath, &sb) == -1) {
-		if (rename(oldpath, newpath) == -1)
-			status = errno_to_portable(errno);
-		else
-			status = SSH2_FX_OK;
-	}
+				/* clean spare link */
+				unlink(newpath);
+			} else
+				status = SSH2_FX_OK;
+		} else if (stat(newpath, &sb) == -1) {
+			if (rename(oldpath, newpath) == -1)
+				status = errno_to_portable(errno);
+			else
+				status = SSH2_FX_OK;
+		}
     }
 
 	send_status(id, status);
@@ -1706,7 +1709,7 @@ process_rename(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
         r = call_rename_plugins(
-                id, oldpath, newpath, 0, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, oldpath, newpath, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("rename", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 

@@ -55,7 +55,7 @@ int call_read_plugins(u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char
 int call_read_dir_plugins(u_int32_t, const char *, StatList *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_write_plugins(u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_remove_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
-int call_rename_plugins(u_int32_t, const char *, const char *, u_int32_t, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_rename_plugins(u_int32_t, const char *, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_mkdir_plugins(u_int32_t, const char *, Attrib *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_rmdir_plugins(u_int32_t, const char *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_stat_plugins(u_int32_t, const char *, Attrib *, enum PLUGIN_SEQUENCE, callback_stats *);

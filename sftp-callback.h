@@ -16,7 +16,7 @@ typedef int (*sftp_cbk_read)     (u_int32_t, const char *, int, u_int64_t, u_int
 typedef int (*sftp_cbk_read_dir) (u_int32_t, const char *, StatList *);
 typedef int (*sftp_cbk_write)    (u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *);
 typedef int (*sftp_cbk_remove)   (u_int32_t, const char *);
-typedef int (*sftp_cbk_rename)   (u_int32_t, const char *, const char *, u_int32_t);
+typedef int (*sftp_cbk_rename)   (u_int32_t, const char *, const char *);
 typedef int (*sftp_cbk_mkdir)    (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_rmdir)    (u_int32_t, const char *);
 typedef int (*sftp_cbk_stat)     (u_int32_t, const char *, Attrib *);

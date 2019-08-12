@@ -530,7 +530,6 @@ int call_remove_plugins(u_int32_t rqstid,
 int call_rename_plugins(u_int32_t rqstid,
         const char * oldfilename,
         const char * newfilename,
-        u_int32_t flags,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -545,7 +544,7 @@ int call_rename_plugins(u_int32_t rqstid,
       Plugin * pplugin = &plugins[i];
       if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_rename != NULL)
       {
-         int rc = pplugin->callbacks_.cf_rename(rqstid, oldfilename, newfilename, flags);
+         int rc = pplugin->callbacks_.cf_rename(rqstid, oldfilename, newfilename);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;
