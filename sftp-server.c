@@ -1730,38 +1730,43 @@ process_readlink(u_int32_t id)
 	debug3("request %u: readlink", id);
 
     if (call_plugins) {
+		Stat s;
         struct callback_stats cbkstats;
 
         r = call_read_link_plugins(
-                id, path, PLUGIN_SEQ_BEFORE, &cbkstats);
+                id, path, &s, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("read_link", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
         r = call_read_link_plugins(
-                id, path, PLUGIN_SEQ_INSTEAD, &cbkstats);
+                id, path, &s, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("read_link", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+		    send_names(id, 1, &s);
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	verbose("readlink \"%s\"", path);
-	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
-		send_status(id, errno_to_portable(errno));
-	else {
-		Stat s;
-
-		buf[len] = '\0';
-		attrib_clear(&s.attrib);
-		s.name = s.long_name = buf;
-		send_names(id, 1, &s);
-	}
+		verbose("readlink \"%s\"", path);
+		if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
+			send_status(id, errno_to_portable(errno));
+		else {
+			Stat s;
+	
+			buf[len] = '\0';
+			attrib_clear(&s.attrib);
+			s.name = s.long_name = buf;
+			send_names(id, 1, &s);
+		}
     }
 
     if (call_plugins) {
+        Stat s;
         struct callback_stats cbkstats;
         r = call_read_link_plugins(
-                id, path, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, path, &s, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("read_link", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 

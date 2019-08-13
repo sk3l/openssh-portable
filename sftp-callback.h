@@ -24,7 +24,7 @@ typedef int (*sftp_cbk_lstat)    (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_fstat)    (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_setstat)  (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_fsetstat) (u_int32_t, const char *, Attrib *);
-typedef int (*sftp_cbk_read_link)(u_int32_t, const char *);
+typedef int (*sftp_cbk_read_link)(u_int32_t, const char *, Stat *);
 typedef int (*sftp_cbk_link)     (u_int32_t, const char *, const char *, int);
 typedef int (*sftp_cbk_lock)     (u_int32_t, const char *, u_int64_t, u_int64_t,int);
 typedef int (*sftp_cbk_unlock)   (u_int32_t, const char *, u_int64_t, u_int64_t);
