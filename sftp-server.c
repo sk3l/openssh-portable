@@ -1788,23 +1788,26 @@ process_symlink(u_int32_t id)
     if (call_plugins) {
         struct callback_stats cbkstats;
 
-        r = call_link_plugins(
-                id, oldpath, newpath, 1, PLUGIN_SEQ_BEFORE, &cbkstats);
+        r = call_symlink_plugins(
+                id, oldpath, newpath, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("link", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
-        r = call_link_plugins(
-                id, oldpath, newpath, 1, PLUGIN_SEQ_INSTEAD, &cbkstats);
+        r = call_symlink_plugins(
+                id, oldpath, newpath, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("link", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
+        if (replaced && (r == PLUGIN_CBK_SUCCESS)) {
+            status = SSH2_FX_OK;
+        }
     }
 
     if (!replaced) { // skip default logic if any INSTEAD plugins
 
-	logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
-	/* this will fail if 'newpath' exists */
-	r = symlink(oldpath, newpath);
-	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+		logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
+		/* this will fail if 'newpath' exists */
+		r = symlink(oldpath, newpath);
+		status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
 
     }
 
@@ -1812,8 +1815,8 @@ process_symlink(u_int32_t id)
 
     if (call_plugins) {
         struct callback_stats cbkstats;
-        r = call_link_plugins(
-                id, oldpath, newpath, 1, PLUGIN_SEQ_AFTER, &cbkstats);
+        r = call_symlink_plugins(
+                id, oldpath, newpath, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("link", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 

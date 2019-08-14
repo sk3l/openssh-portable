@@ -760,10 +760,9 @@ int call_read_link_plugins(u_int32_t rqstid,
    return PLUGIN_CBK_SUCCESS;
 }
 
-int call_link_plugins(u_int32_t rqstid,
+int call_symlink_plugins(u_int32_t rqstid,
         const char * newlink,
         const char * curlink,
-        int symlink,
         enum PLUGIN_SEQUENCE seq,
         callback_stats * cbkstats)
 {
@@ -776,9 +775,9 @@ int call_link_plugins(u_int32_t rqstid,
    for (size_t i = 0; i < plugins_cnt; ++i)
    {
       Plugin * pplugin = &plugins[i];
-      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_link != NULL)
+      if (pplugin->sequence_ == seq && pplugin->callbacks_.cf_symlink != NULL)
       {
-         int rc = pplugin->callbacks_.cf_link(rqstid, newlink, curlink, symlink);
+         int rc = pplugin->callbacks_.cf_symlink(rqstid, newlink, curlink);
          if (rc != PLUGIN_CBK_SUCCESS)
             cbkstats->failure_cnt_++;
          cbkstats->invocation_cnt_++;

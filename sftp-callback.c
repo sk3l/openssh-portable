@@ -22,7 +22,7 @@ static const char * SFTP_CALLBACK_SYM [] = {
     "sftp_cf_setstat",
     "sftp_cf_fsetstat",
     "sftp_cf_read_link",
-    "sftp_cf_link",
+    "sftp_cf_symlink",
     "sftp_cf_lock",
     "sftp_cf_unlock",
     "sftp_cf_realpath",
@@ -32,28 +32,6 @@ static const char * SFTP_CALLBACK_SYM [] = {
     "sftp_cf_name",
     "sftp_cf_attrs"
 };
-/*
-void set_cbk_attribs(
-    cbk_attribs_ptr attrs,
-    u_int32_t flags,
-    u_int64_t size,
-    u_int32_t uid,
-    u_int32_t gid,
-    u_int32_t perm,
-    u_int32_t atime,
-    u_int32_t mtime)
-{
-    if (attrs) {
-        attrs->flags = flags;
-        attrs->size  = size;
-        attrs->uid   = uid;
-        attrs->gid   = gid;
-        attrs->perm  = perm;
-        attrs->atime = atime;
-        attrs->mtime = mtime;
-    }
-}
-*/
 
 const char * get_sftp_callback_sym(enum SFTP_CALLBACK_FUNC scf)
 {
@@ -116,8 +94,8 @@ int set_sftp_callback_func(callbacks_ptr cp, enum SFTP_CALLBACK_FUNC scf, sftp_c
         case CBACK_FUNC_READ_LINK:
             cp->cf_read_link = (sftp_cbk_read_link) f;
         break;
-         case CBACK_FUNC_LINK:
-            cp->cf_link = (sftp_cbk_link) f;
+         case CBACK_FUNC_SYMLINK:
+            cp->cf_symlink = (sftp_cbk_symlink) f;
         break;
         case CBACK_FUNC_LOCK:
             cp->cf_lock = (sftp_cbk_lock) f;

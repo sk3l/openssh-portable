@@ -25,7 +25,7 @@ typedef int (*sftp_cbk_fstat)    (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_setstat)  (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_fsetstat) (u_int32_t, const char *, Attrib *);
 typedef int (*sftp_cbk_read_link)(u_int32_t, const char *, Stat *);
-typedef int (*sftp_cbk_link)     (u_int32_t, const char *, const char *, int);
+typedef int (*sftp_cbk_symlink)  (u_int32_t, const char *, const char *);
 typedef int (*sftp_cbk_lock)     (u_int32_t, const char *, u_int64_t, u_int64_t,int);
 typedef int (*sftp_cbk_unlock)   (u_int32_t, const char *, u_int64_t, u_int64_t);
 typedef int (*sftp_cbk_realpath) (u_int32_t, const char *, Stat *);
@@ -56,7 +56,7 @@ struct sftp_callbacks {
     sftp_cbk_setstat   cf_setstat;
     sftp_cbk_fsetstat  cf_fsetstat;
     sftp_cbk_read_link cf_read_link;
-    sftp_cbk_link      cf_link;
+    sftp_cbk_symlink   cf_symlink;
     sftp_cbk_lock      cf_lock;
     sftp_cbk_unlock    cf_unlock;
     sftp_cbk_realpath  cf_realpath;
@@ -85,7 +85,7 @@ enum SFTP_CALLBACK_FUNC {
     CBACK_FUNC_SETSTAT,
     CBACK_FUNC_FSETSTAT,
     CBACK_FUNC_READ_LINK,
-    CBACK_FUNC_LINK,
+    CBACK_FUNC_SYMLINK,
     CBACK_FUNC_LOCK,
     CBACK_FUNC_UNLOCK,
     CBACK_FUNC_REALPATH,
