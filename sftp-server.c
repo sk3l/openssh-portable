@@ -704,11 +704,11 @@ process_open(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_open_file_plugins(
-	                id, name, &handle, mode, pflags, &a, PLUGIN_SEQ_BEFORE, &cbkstats);
+	                id, name, mode, pflags, &handle, PLUGIN_SEQ_BEFORE, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_BEFORE, r, &cbkstats);
 
 	    r = call_open_file_plugins(
-	                id, name, &handle, mode, pflags, &a, PLUGIN_SEQ_INSTEAD, &cbkstats);
+	                id, name, mode, pflags, &handle, PLUGIN_SEQ_INSTEAD, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_INSTEAD, r, &cbkstats);
 
         replaced = (cbkstats.invocation_cnt_ > 0) ? 1 : 0;
@@ -749,7 +749,7 @@ process_open(u_int32_t id)
         struct callback_stats cbkstats;
 
         r = call_open_file_plugins(
-                id, name, &handle, mode, pflags, &a, PLUGIN_SEQ_AFTER, &cbkstats);
+                id, name, mode, pflags, &handle, PLUGIN_SEQ_AFTER, &cbkstats);
         handle_log_plugin("open_file", PLUGIN_SEQ_AFTER, r, &cbkstats);
     }
 

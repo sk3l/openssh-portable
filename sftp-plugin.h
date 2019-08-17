@@ -48,7 +48,7 @@ int sftp_plugins_release();
 int get_plugins(Plugin ** plugins, size_t * cnt);
 
 // Methods for invocation of SFTP plugin methods
-int call_open_file_plugins(u_int32_t, const char *, int *, u_int32_t, u_int32_t, Attrib *, enum PLUGIN_SEQUENCE, callback_stats *);
+int call_open_file_plugins(u_int32_t, const char *, u_int32_t, u_int32_t, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_open_dir_plugins(u_int32_t, const char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_close_plugins(u_int32_t, const char *, int, enum PLUGIN_SEQUENCE, callback_stats *);
 int call_read_plugins(u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *, enum PLUGIN_SEQUENCE, callback_stats *);

@@ -9,7 +9,7 @@ void set_cbk_attribs(
     Attrib *, u_int32_t, u_int64_t, u_int32_t, u_int32_t, u_int32_t,u_int32_t, u_int32_t);
 
 /* Request callback functions */
-typedef int (*sftp_cbk_open_file)(u_int32_t, const char *, int *, u_int32_t, u_int32_t, Attrib *);
+typedef int (*sftp_cbk_open_file)(u_int32_t, const char *,  u_int32_t, u_int32_t, int *);
 typedef int (*sftp_cbk_open_dir) (u_int32_t, const char *, int *);
 typedef int (*sftp_cbk_close)    (u_int32_t, const char *, int);
 typedef int (*sftp_cbk_read)     (u_int32_t, const char *, int, u_int64_t, u_int32_t, u_char *, int *);
