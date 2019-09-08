@@ -49,6 +49,16 @@ typedef struct Attrib Attrib;
 
 /* portable attributes, etc. */
 
+/* portable open modes bit flags */
+enum OpenModes {
+    READ = 1,
+    WRITE = 2,
+    APPEND = 4,
+    CREATE = 8,
+    TRUNC = 16,
+    EXCL = 32
+};
+
 struct Stat {
 	char *name;
 	char *long_name;
